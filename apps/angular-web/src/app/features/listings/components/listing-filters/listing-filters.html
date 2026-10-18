@@ -1,0 +1,72 @@
+<form class="filters" (submit)="applyNow($event)">
+  <h2 id="search-heading">Search and filters</h2>
+
+  <div class="field">
+    <label for="listing-search">Search</label>
+    <input
+      id="listing-search"
+      type="search"
+      [formControl]="form.controls.search"
+      [attr.maxlength]="maxSearchLength"
+      [attr.aria-invalid]="fieldError() ? 'true' : null"
+      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="field">
+    <label for="listing-category">Category</label>
+    <select id="listing-category" [formControl]="form.controls.category">
+      <option value="">All categories</option>
+      @for (category of categories; track category) {
+        <option [value]="category">{{ categoryLabel(category) }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="listing-min-price">Minimum asking price</label>
+    <input
+      id="listing-min-price"
+      type="text"
+      inputmode="decimal"
+      [formControl]="form.controls.minPrice"
+      [attr.aria-invalid]="fieldError() ? 'true' : null"
+      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="field">
+    <label for="listing-max-price">Maximum asking price</label>
+    <input
+      id="listing-max-price"
+      type="text"
+      inputmode="decimal"
+      [formControl]="form.controls.maxPrice"
+      [attr.aria-invalid]="fieldError() ? 'true' : null"
+      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="field">
+    <label for="listing-sort">Sort</label>
+    <select id="listing-sort" [formControl]="form.controls.sort">
+      @for (sort of sorts; track sort) {
+        <option [value]="sort">{{ sortLabel(sort) }}</option>
+      }
+    </select>
+  </div>
+
+  @if (fieldError(); as message) {
+    <p id="listing-filter-error" class="error" role="alert">{{ message }}</p>
+  }
+
+  <div class="actions">
+    <button type="submit" class="primary">Search</button>
+    <button type="button" (click)="clear()" [disabled]="!filtersActive()">
+      Clear filters
+    </button>
+  </div>
+</form>

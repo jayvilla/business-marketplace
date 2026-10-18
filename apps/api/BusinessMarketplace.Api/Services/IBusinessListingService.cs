@@ -1,3 +1,4 @@
+using BusinessMarketplace.Api.Dtos;
 using BusinessMarketplace.Api.Models;
 
 namespace BusinessMarketplace.Api.Services;
@@ -38,9 +39,13 @@ namespace BusinessMarketplace.Api.Services;
 public interface IBusinessListingService
 {
     /// <summary>
-    /// Listings whose status is Active. Draft, Pending, and Sold are omitted.
+    /// One page of Active listings matching <paramref name="query"/>.
+    /// Draft, Pending, and Sold are omitted before filters run.
+    /// <see cref="BusinessListingPage.TotalCount"/> counts the matches,
+    /// not the rows in the page.
     /// </summary>
-    Task<IReadOnlyList<BusinessListing>> GetActiveListingsAsync(
+    Task<BusinessListingPage> GetActiveListingsAsync(
+        ListingQuery query,
         CancellationToken cancellationToken = default);
 
     /// <summary>

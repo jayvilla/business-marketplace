@@ -38,35 +38,40 @@ public class BusinessListingsController(
     ILogger<BusinessListingsController> logger) : ControllerBase
 {
     /// <summary>
-    /// Active listings for a card grid.
+    /// One page of active listings for the card grid.
+    ///
+    /// [FromQuery] binds <see cref="ListingQuery"/> from the query string.
+    /// Invalid numbers, unknown enums, and a minimum price above the
+    /// maximum become 400 before this method runs. The service then applies
+    /// the filters in PostgreSQL.
     ///
     /// The action is async because the service awaits PostgreSQL. Await is
-    /// how the status code can depend on the result. Returning the Task
-    /// without awaiting would also work here, because this action has only
-    /// one success path, but the detail action has to branch.
+    /// how the status code can depend on the result.
     ///
     /// CancellationToken is the request's AbortSignal. The framework binds
     /// it from the connection. It is not a route or query value, and no
     /// [FromQuery] is required. The token is passed through so a canceled
     /// browser request can stop the service.
     ///
-    /// An empty catalog is still HTTP 200 and []. The collection route
-    /// exists. 404 would tell the client the route is missing. NestJS
-    /// returns [] from a list handler for the same reason, rather than
-    /// throwing NotFoundException.
+    /// No matches is still HTTP 200 with an empty items array. The route
+    /// exists. 404 would tell the client the route is missing.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType<BusinessListingSummaryDto[]>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<BusinessListingSummaryDto[]>> GetActive(
+    [ProducesResponseType<BusinessListingPageDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BusinessListingPageDto>> GetActive(
+        [FromQuery] ListingQuery query,
         CancellationToken cancellationToken)
     {
-        var active = await listingService.GetActiveListingsAsync(cancellationToken);
+        var page = await listingService.GetActiveListingsAsync(query, cancellationToken);
 
-        var summaries = active
-            .Select(listing => listing.ToSummaryDto())
-            .ToArray();
-
-        return Ok(summaries);
+        return Ok(new BusinessListingPageDto
+        {
+            Items = page.Items.Select(listing => listing.ToSummaryDto()).ToArray(),
+            Page = page.Page,
+            PageSize = page.PageSize,
+            TotalCount = page.TotalCount,
+        });
     }
 
     /// <summary>

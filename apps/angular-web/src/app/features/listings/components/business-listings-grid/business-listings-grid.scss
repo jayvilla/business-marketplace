@@ -48,6 +48,23 @@
   background: var(--color-surface);
 }
 
+.state p {
+  margin: 0;
+}
+
+.state button {
+  margin-top: var(--space-3);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -1,44 +1,50 @@
-<!--
-  No `<main>` here. The shell already renders the document's main landmark.
-  Heading order is h1, then h2 for each region, then h3 on each card.
--->
 <div class="page">
   <header class="intro">
     <h1>Businesses for Sale</h1>
     <p>
-      Published listings from the marketplace API. Search and filters will be
-      added in a later step.
+      Published listings from the marketplace API. Search, filters, sort, and
+      pages run on the server.
     </p>
   </header>
 
   <div class="layout">
-    <section class="filters" aria-labelledby="search-heading">
-      <p class="eyebrow">Coming next</p>
-      <h2 id="search-heading">Search and filters</h2>
-      <p>Search and filter controls will appear here.</p>
-    </section>
+    <app-listing-filters
+      [value]="query()"
+      (filtersChange)="onFiltersChange($event)"
+    />
 
     <section class="results" aria-labelledby="results-heading">
       <h2 id="results-heading">Listing results</h2>
-      <!--
-        The count is the length of a successful response. Loading and error
-        do not show a number, and neither does an empty catalog. The grid
-        states those cases itself.
-      -->
-      @if (status() === 'ready' && listings().length > 0) {
-        <p class="count">
-          @if (listings().length === 1) {
-            1 listing
-          } @else {
-            {{ listings().length }} listings
-          }
-        </p>
+
+      @if (priceError(); as message) {
+        <p class="state" role="alert">{{ message }}</p>
+      } @else {
+        @if (status() === 'ready' && totalCount() > 0) {
+          <p class="count" role="status">
+            @if (totalCount() === 1) {
+              1 listing
+            } @else {
+              {{ totalCount() }} listings
+            }
+          </p>
+        }
+        <app-business-listings-grid
+          [listings]="listings()"
+          [status]="status()"
+          [errorMessage]="errorMessage()"
+          [emptyMessage]="emptyMessage()"
+          [busy]="busy()"
+          (retry)="retry()"
+        />
+        @if (showPagination()) {
+          <app-listing-pagination
+            [page]="query().page"
+            [pageSize]="query().pageSize"
+            [totalCount]="totalCount()"
+            (pageChange)="onPageChange($event)"
+          />
+        }
       }
-      <app-business-listings-grid
-        [listings]="listings()"
-        [status]="status()"
-        [errorMessage]="errorMessage()"
-      />
     </section>
   </div>
 </div>

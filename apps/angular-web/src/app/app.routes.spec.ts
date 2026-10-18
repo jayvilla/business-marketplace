@@ -20,7 +20,7 @@ const listingsUrl = 'http://localhost:5000/api/listings';
  * before its promise resolves. `expectOne` has to wait for that moment.
  */
 async function nextListingsRequest(http: HttpTestingController): Promise<TestRequest> {
-  return vi.waitFor(() => http.expectOne(listingsUrl));
+  return vi.waitFor(() => http.expectOne((request) => request.url === listingsUrl));
 }
 
 describe('app routes', () => {
@@ -45,7 +45,12 @@ describe('app routes', () => {
   it('redirects / to /listings and shows the listings page', async () => {
     const harness = await RouterTestingHarness.create();
     const pending = harness.navigateByUrl('/');
-    (await nextListingsRequest(http)).flush([]);
+    (await nextListingsRequest(http)).flush({
+      items: [],
+      page: 1,
+      pageSize: 6,
+      totalCount: 0,
+    });
     await pending;
 
     expect(TestBed.inject(Router).url).toBe('/listings');
@@ -57,20 +62,25 @@ describe('app routes', () => {
   it('renders the listings page at /listings from the API payload', async () => {
     const harness = await RouterTestingHarness.create();
     const pending = harness.navigateByUrl('/listings', ListingsPage);
-    (await nextListingsRequest(http)).flush([
-      {
-        id: '01900000-0000-7000-8000-000000000001',
-        title: 'Elm Street Bistro',
-        description: 'A 42-seat dinner restaurant.',
-        askingPrice: 875000,
-        annualRevenue: 1240000,
-        cashFlow: 186000,
-        city: 'Portland',
-        state: 'OR',
-        category: 'Restaurant',
-        imageUrl: null,
-      },
-    ]);
+    (await nextListingsRequest(http)).flush({
+      items: [
+        {
+          id: '01900000-0000-7000-8000-000000000001',
+          title: 'Elm Street Bistro',
+          description: 'A 42-seat dinner restaurant.',
+          askingPrice: 875000,
+          annualRevenue: 1240000,
+          cashFlow: 186000,
+          city: 'Portland',
+          state: 'OR',
+          category: 'Restaurant',
+          imageUrl: null,
+        },
+      ],
+      page: 1,
+      pageSize: 6,
+      totalCount: 1,
+    });
     const page = await pending;
     await harness.fixture.whenStable();
 

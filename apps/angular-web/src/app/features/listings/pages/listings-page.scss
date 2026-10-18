@@ -11,11 +11,10 @@
 }
 
 .intro h1,
-.filters h2,
 .results h2,
 .intro p,
-.filters p,
-.count {
+.count,
+.state {
   margin: 0;
 }
 
@@ -38,37 +37,25 @@
   margin-top: var(--space-6);
 }
 
-.filters {
-  padding: var(--space-5);
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.eyebrow {
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.filters h2,
 .results h2 {
-  margin-top: var(--space-2);
+  margin-top: 0;
   font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
 }
 
-.results h2 {
-  margin-top: 0;
-}
-
-.filters p:last-child,
-.count {
+.count,
+.state {
   margin-top: var(--space-2);
   color: var(--color-text-muted);
+}
+
+.state {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 @include bp.desktop {

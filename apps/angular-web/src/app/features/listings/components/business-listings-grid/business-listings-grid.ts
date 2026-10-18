@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { BusinessListing } from '../../models/business-listing';
 import { BusinessListingCard } from '../business-listing-card/business-listing-card';
 
@@ -26,6 +26,10 @@ export class BusinessListingsGrid {
   readonly listings = input<readonly BusinessListing[]>([]);
   readonly status = input<ListingsGridStatus>('ready');
   readonly errorMessage = input('Sample listings could not be loaded.');
+  readonly emptyMessage = input('No businesses are listed yet.');
+  /** True while a newer request is in flight and the previous rows stay visible. */
+  readonly busy = input(false);
+  readonly retry = output<void>();
 
   /**
    * Fixed slots, not `Array.from` in the template. A function call in a

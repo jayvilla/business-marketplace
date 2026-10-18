@@ -43,15 +43,19 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var json = await response.Content.ReadAsStringAsync();
-        var listings = JsonSerializer.Deserialize<BusinessListingSummaryDto[]>(json, JsonSerializerOptions.Web);
+        var page = JsonSerializer.Deserialize<BusinessListingPageDto>(json, JsonSerializerOptions.Web);
 
-        Assert.NotNull(listings);
-        Assert.Equal(8, listings.Length);
-        Assert.Contains(listings, listing => listing.Id == ElmStreetBistroId && listing.Title == "Elm Street Bistro");
-        Assert.DoesNotContain(listings, listing => listing.Id == CascadeAnalyticsId);
-        Assert.DoesNotContain(listings, listing => listing.Id == SonoranHomeGoodsId);
-        Assert.DoesNotContain(listings, listing => listing.Id == BeaconDentalId);
-        Assert.All(listings, listing => Assert.False(string.IsNullOrWhiteSpace(listing.Title)));
+        Assert.NotNull(page);
+        Assert.Equal(1, page.Page);
+        Assert.Equal(ListingQuery.DefaultPageSize, page.PageSize);
+        Assert.Equal(8, page.TotalCount);
+        Assert.Equal(ListingQuery.DefaultPageSize, page.Items.Count);
+        Assert.Equal("King Street Bakery", page.Items[0].Title);
+        Assert.Contains(page.Items, listing => listing.Id == ElmStreetBistroId && listing.Title == "Elm Street Bistro");
+        Assert.DoesNotContain(page.Items, listing => listing.Id == CascadeAnalyticsId);
+        Assert.DoesNotContain(page.Items, listing => listing.Id == SonoranHomeGoodsId);
+        Assert.DoesNotContain(page.Items, listing => listing.Id == BeaconDentalId);
+        Assert.All(page.Items, listing => Assert.False(string.IsNullOrWhiteSpace(listing.Title)));
 
         Assert.Contains("\"category\":\"Restaurant\"", json, StringComparison.Ordinal);
         Assert.Contains("\"askingPrice\":", json, StringComparison.Ordinal);
@@ -76,7 +80,14 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
         var response = await client.GetAsync("/api/listings");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("[]", (await response.Content.ReadAsStringAsync()).Trim());
+
+        var page = JsonSerializer.Deserialize<BusinessListingPageDto>(
+            await response.Content.ReadAsStringAsync(),
+            JsonSerializerOptions.Web);
+
+        Assert.NotNull(page);
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
     }
 
     [Theory]
@@ -174,10 +185,11 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
 
     private sealed class NoActiveListings : IBusinessListingService
     {
-        public Task<IReadOnlyList<BusinessListing>> GetActiveListingsAsync(
+        public Task<BusinessListingPage> GetActiveListingsAsync(
+            ListingQuery query,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<BusinessListing>>([]);
+            return Task.FromResult(new BusinessListingPage([], query.Page, query.PageSize, 0));
         }
 
         public Task<BusinessListing?> GetByIdAsync(

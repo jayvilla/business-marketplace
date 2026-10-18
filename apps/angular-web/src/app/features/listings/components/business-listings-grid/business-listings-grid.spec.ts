@@ -61,6 +61,7 @@ describe('BusinessListingsGrid', () => {
     expect(fixture.nativeElement.textContent).not.toContain('No businesses are listed yet.');
     expect(fixture.nativeElement.querySelector('app-business-listing-card')).toBeNull();
     expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Try again');
   });
 
   it('renders loading placeholders instead of the listings it was given', async () => {

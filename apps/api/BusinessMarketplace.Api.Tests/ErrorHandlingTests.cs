@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using BusinessMarketplace.Api.Dtos;
 using BusinessMarketplace.Api.Models;
 using BusinessMarketplace.Api.Services;
 using Microsoft.AspNetCore.Hosting;
@@ -61,7 +62,8 @@ public class ErrorHandlingTests
 
     private sealed class ThrowingListingService : IBusinessListingService
     {
-        public Task<IReadOnlyList<BusinessListing>> GetActiveListingsAsync(
+        public Task<BusinessListingPage> GetActiveListingsAsync(
+            ListingQuery query,
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("Password=super-secret; SELECT * FROM secret_table");

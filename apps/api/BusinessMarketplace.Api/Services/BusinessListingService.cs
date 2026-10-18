@@ -1,4 +1,5 @@
 using BusinessMarketplace.Api.Data;
+using BusinessMarketplace.Api.Dtos;
 using BusinessMarketplace.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +13,9 @@ namespace BusinessMarketplace.Api.Services;
 /// Callers still depend on the interface. There is no repository class.
 /// A DbContext already is the unit of work and the set of tables.
 ///
-/// GetActiveListingsAsync and GetByIdAsync return IQueryable until
-/// ToListAsync or FirstOrDefaultAsync. IQueryable is a query description.
+/// GetActiveListingsAsync builds an IQueryable through ActiveListingQuery,
+/// then CountAsync and ToListAsync each run it. GetByIdAsync stays a
+/// single FirstOrDefaultAsync. IQueryable is a query description.
 /// IEnumerable would be objects already in memory. Where on an IQueryable
 /// becomes a SQL WHERE, so PostgreSQL returns only the Active rows. Loading
 /// the whole table and then filtering in C# would move every listing across
@@ -28,13 +30,21 @@ namespace BusinessMarketplace.Api.Services;
 /// </summary>
 public sealed class BusinessListingService(AppDbContext db) : IBusinessListingService
 {
-    public async Task<IReadOnlyList<BusinessListing>> GetActiveListingsAsync(
+    public async Task<BusinessListingPage> GetActiveListingsAsync(
+        ListingQuery query,
         CancellationToken cancellationToken = default)
     {
-        return await db.BusinessListings
-            .AsNoTracking()
-            .Where(listing => listing.Status == ListingStatus.Active)
+        // Apply returns a query. Count and the page each execute it.
+        // Skip/Take are SQL OFFSET/LIMIT, so a later page does not read
+        // the earlier rows into the process.
+        var filtered = ActiveListingQuery.Apply(db.BusinessListings.AsNoTracking(), query);
+        var totalCount = await filtered.CountAsync(cancellationToken);
+        var items = await filtered
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
             .ToListAsync(cancellationToken);
+
+        return new BusinessListingPage(items, query.Page, query.PageSize, totalCount);
     }
 
     public async Task<BusinessListing?> GetByIdAsync(
