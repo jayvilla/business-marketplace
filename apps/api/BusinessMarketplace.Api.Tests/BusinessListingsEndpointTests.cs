@@ -131,6 +131,8 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
         Assert.NotNull(problem);
         Assert.Equal(StatusCodes.Status404NotFound, problem.Status);
         Assert.Equal("Not Found", problem.Title);
+        Assert.Equal("/api/listings/01900000-0000-7000-8000-0000000000ff", problem.Instance);
+        Assert.False(string.IsNullOrWhiteSpace(problem.Extensions["traceId"]?.ToString()));
     }
 
     [Theory]
@@ -166,6 +168,8 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
         Assert.NotNull(problem);
         Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
         Assert.True(problem.Errors.ContainsKey("id"));
+        Assert.Equal("/api/listings/not-a-guid", problem.Instance);
+        Assert.False(string.IsNullOrWhiteSpace(problem.Extensions["traceId"]?.ToString()));
     }
 
     private sealed class NoActiveListings : IBusinessListingService

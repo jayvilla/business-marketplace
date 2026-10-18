@@ -24,23 +24,26 @@ namespace BusinessMarketplace.Api.Controllers;
 /// [HttpGet("{id}")] is @Get(':id'). The method name is not part of the URL.
 ///
 /// [Produces("application/json")] keeps the OpenAPI document from also
-/// advertising text/plain. The constructor parameter is the interface, so
-/// this class does not name the in-memory implementation. The container
-/// supplies it, as NestJS supplies a constructor dependency.
+/// advertising text/plain. The constructor takes the interface, so this
+/// class does not name the EF implementation. The container supplies it,
+/// as NestJS supplies a constructor dependency. ILogger&lt;T&gt; is the
+/// category logger. The category is this class name, which is how a log
+/// viewer filters "listings" without a stringly-typed label.
 /// </summary>
 [ApiController]
 [Produces("application/json")]
 [Route("api/listings")]
-public class BusinessListingsController(IBusinessListingService listingService) : ControllerBase
+public class BusinessListingsController(
+    IBusinessListingService listingService,
+    ILogger<BusinessListingsController> logger) : ControllerBase
 {
     /// <summary>
     /// Active listings for a card grid.
     ///
-    /// The action is async because it awaits the service. The current
-    /// service completes immediately, and a database implementation will
-    /// not. Await is how the status code can depend on the result. Returning
-    /// the Task without awaiting would also work here, because this action
-    /// has only one success path, but the detail action has to branch.
+    /// The action is async because the service awaits PostgreSQL. Await is
+    /// how the status code can depend on the result. Returning the Task
+    /// without awaiting would also work here, because this action has only
+    /// one success path, but the detail action has to branch.
     ///
     /// CancellationToken is the request's AbortSignal. The framework binds
     /// it from the connection. It is not a route or query value, and no
@@ -99,13 +102,23 @@ public class BusinessListingsController(IBusinessListingService listingService) 
     {
         var listing = await listingService.GetByIdAsync(id, cancellationToken);
 
-        // NotFound() is a 404 with no payload of ours. [ApiController] then
-        // writes that client error as a problem-details document (title
-        // "Not Found", no listing fields). Unknown and not-Active stay
-        // indistinguishable. SuppressMapClientErrors would turn this back
-        // into an empty 404. The document is more useful to a client.
-        if (listing is null || listing.Status != ListingStatus.Active)
+        // NotFound() is a 404 result, not an exception. Expected misses
+        // must not enter the exception handler. [ApiController] writes
+        // the result as problem details. Unknown and not-Active stay
+        // indistinguishable in that body. The log can tell them apart
+        // because it stays on the server. A successful read is not logged.
+        if (listing is null)
         {
+            logger.LogWarning("Business listing {ListingId} was not found", id);
+            return NotFound();
+        }
+
+        if (listing.Status != ListingStatus.Active)
+        {
+            logger.LogInformation(
+                "Business listing {ListingId} is not publicly available. Status: {ListingStatus}",
+                id,
+                listing.Status);
             return NotFound();
         }
 

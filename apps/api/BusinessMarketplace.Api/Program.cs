@@ -1,7 +1,10 @@
 using BusinessMarketplace.Api.Configuration;
 using BusinessMarketplace.Api.Data;
+using BusinessMarketplace.Api.Diagnostics;
 using BusinessMarketplace.Api.Services;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 // Composition root.
 //
@@ -24,6 +27,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers, model binding, validation, and System.Text.Json.
 // Property names are camelCase on the wire unless this is overridden.
 builder.Services.AddControllers();
+
+// RFC 9457 ProblemDetails for client errors and for the exception handler.
+// Customize runs for both, so traceId and instance are not added in each action.
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = MarketplaceProblemDetails.Customize;
+});
+
+// IExceptionHandler is invoked by UseExceptionHandler. Registration alone
+// does nothing. The handler is a singleton, like a NestJS APP_FILTER.
+builder.Services.AddExceptionHandler<UnexpectedExceptionHandler>();
+
+// "self" is liveness: the process answered. "database" is readiness:
+// PostgreSQL accepted a connection. The tags keep those questions apart.
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 // Built-in OpenAPI document for ASP.NET Core 10 (OpenAPI 3.1).
 // Swagger UI, registered further down, only renders this document.
@@ -134,11 +154,26 @@ if (args.Contains("--seed"))
 
 if (app.Environment.IsDevelopment())
 {
-    // Each Use* call appends middleware. Order is the behavior, same as
-    // Express app.use. The exception page has to be first so it can catch
-    // exceptions thrown by middleware registered after it.
-    app.UseDeveloperExceptionPage();
+    // CORS is outside the exception handler. A 500 is written by that
+    // handler, and the CORS middleware adds Access-Control-Allow-Origin
+    // on the way back out. Registered the other way around, the Angular
+    // dev server would see a network error instead of the problem document.
+    app.UseCors(FrontendCorsSettings.PolicyName);
 
+    app.Logger.LogInformation(
+        "Development CORS is enabled for {Origins}",
+        string.Join(", ", developmentOrigins));
+}
+
+// Catches exceptions from everything registered after this call.
+// UseDeveloperExceptionPage is not used. That page is HTML and includes
+// the stack trace. This API's clients, including a later Angular app,
+// need a ProblemDetails JSON body in every environment. The stack trace
+// is written once, by UnexpectedExceptionHandler, to the server log.
+app.UseExceptionHandler();
+
+if (app.Environment.IsDevelopment())
+{
     // Viewer only. The page fetches the document MapOpenApi exposes at
     // /openapi/v1.json. MapOpenApi adds an endpoint; it does not occupy
     // this slot in the middleware chain.
@@ -149,14 +184,6 @@ if (app.Environment.IsDevelopment())
     });
 
     app.MapOpenApi();
-
-    // Before authorization and before endpoints execute, so controller
-    // responses still receive Access-Control-Allow-Origin.
-    app.UseCors(FrontendCorsSettings.PolicyName);
-
-    app.Logger.LogInformation(
-        "Development CORS is enabled for {Origins}",
-        string.Join(", ", developmentOrigins));
 }
 
 // No authentication scheme is registered. The middleware is here so a later
@@ -165,6 +192,17 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Separate from GET /api/health, which stays the existing JSON contract.
+// A plain "Healthy" or "Unhealthy" body has no host, database name, or error text.
+app.MapHealthChecks("/api/health/live", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("live"),
+});
+app.MapHealthChecks("/api/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+});
 
 // Blocks this thread until Ctrl+C. Kestrel continues to accept requests
 // on thread-pool threads, which is why a synchronous action is still served

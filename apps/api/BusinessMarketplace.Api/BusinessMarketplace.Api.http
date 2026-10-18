@@ -5,6 +5,14 @@ Accept: application/json
 
 ###
 
+GET {{BusinessMarketplace.Api_HostAddress}}/api/health/live
+
+###
+
+GET {{BusinessMarketplace.Api_HostAddress}}/api/health/ready
+
+###
+
 GET {{BusinessMarketplace.Api_HostAddress}}/openapi/v1.json
 Accept: application/json
 

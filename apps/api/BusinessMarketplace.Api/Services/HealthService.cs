@@ -13,12 +13,12 @@ namespace BusinessMarketplace.Api.Services;
 public sealed class HealthService(ILogger<HealthService> logger)
 {
     /// <summary>
-    /// Returns the current health payload.
+    /// Returns the current liveness payload for GET /api/health.
     ///
-    /// Synchronous because it does not wait on I/O. When a later service
-    /// queries a database, that method should return a Task and the
-    /// controller should await it. Marking a method async without an await
-    /// only allocates a state machine and does not make the work asynchronous.
+    /// Synchronous because it does not wait on I/O. Database readiness is
+    /// a different question and lives on DatabaseHealthCheck. Putting a
+    /// connection attempt here would make a Postgres outage look like the
+    /// process itself had stopped.
     /// </summary>
     public HealthStatus GetStatus()
     {
