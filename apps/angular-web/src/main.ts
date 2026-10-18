@@ -4,4 +4,9 @@ import { App } from './app/app';
 
 // No AppModule. The platform creates an injector from `appConfig`, then
 // mounts `App` on the `<app-root>` element in index.html.
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+//
+// `Promise.catch` types the rejection as `any`. Annotating `unknown` means a
+// failed bootstrap is not a value whose properties can be read by accident.
+bootstrapApplication(App, appConfig).catch((err: unknown) =>
+  console.error(err),
+);

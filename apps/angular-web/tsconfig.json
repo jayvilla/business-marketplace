@@ -6,6 +6,10 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    // `strict` does not include this. An index read (`items[i]`, `record[key]`)
+    // is `T | undefined`, so a missing element is handled before it is used.
+    // Kept on this project only. The workspace base stays loose, and Vue is unchanged.
+    "noUncheckedIndexedAccess": true,
     "isolatedModules": true,
     "target": "es2022",
     "emitDecoratorMetadata": false,
