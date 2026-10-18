@@ -1,5 +1,12 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  linkedSignal,
+} from '@angular/core';
+import { placeholderForCategory } from '../../images/listing-placeholder';
 import { BusinessListing } from '../../models/business-listing';
 
 /**
@@ -28,4 +35,31 @@ import { BusinessListing } from '../../models/business-listing';
 })
 export class BusinessListingCard {
   readonly listing = input.required<BusinessListing>();
+
+  /**
+   * Resets when the parent passes a different listing. A failed photo on
+   * one card must not stick to the next business that reuses this instance.
+   * `linkedSignal` does that by recomputing whenever `listing` changes.
+   */
+  private readonly imageFailed = linkedSignal(() => {
+    this.listing();
+    return false;
+  });
+
+  /**
+   * The API URL until it errors, then a local SVG. Seed rows point at
+   * `images.example`, which does not resolve. The text of the card still
+   * comes from the response.
+   */
+  protected readonly imageSource = computed(() => {
+    const listing = this.listing();
+    if (this.imageFailed()) {
+      return placeholderForCategory(listing.category);
+    }
+    return listing.imageUrl;
+  });
+
+  protected onImageError(): void {
+    this.imageFailed.set(true);
+  }
 }

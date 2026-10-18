@@ -6,8 +6,8 @@
   <header class="intro">
     <h1>Businesses for Sale</h1>
     <p>
-      These listings are fictional samples for the interface. They are not real
-      businesses for sale. Search and filters will be added in a later step.
+      Published listings from the marketplace API. Search and filters will be
+      added in a later step.
     </p>
   </header>
 
@@ -21,13 +21,24 @@
     <section class="results" aria-labelledby="results-heading">
       <h2 id="results-heading">Listing results</h2>
       <!--
-        The count describes the array this page passes in. It is not inside
-        the grid, because the grid also renders loading and empty, where a
-        sample count would be a lie. The service phase should drive this
-        number from the same state as the grid.
+        The count is the length of a successful response. Loading and error
+        do not show a number, and neither does an empty catalog. The grid
+        states those cases itself.
       -->
-      <p class="count">{{ sampleListings.length }} fictional sample listings</p>
-      <app-business-listings-grid [listings]="sampleListings" />
+      @if (status() === 'ready' && listings().length > 0) {
+        <p class="count">
+          @if (listings().length === 1) {
+            1 listing
+          } @else {
+            {{ listings().length }} listings
+          }
+        </p>
+      }
+      <app-business-listings-grid
+        [listings]="listings()"
+        [status]="status()"
+        [errorMessage]="errorMessage()"
+      />
     </section>
   </div>
 </div>

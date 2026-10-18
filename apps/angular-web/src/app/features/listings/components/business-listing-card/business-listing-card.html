@@ -7,13 +7,19 @@
       of what the photo shows, written on the model, not the business name
       repeated as the alt.
     -->
+    <!--
+      Empty alt: the summary has no image description, and the title is
+      already the heading. Repeating the title as alt would announce it twice.
+      `(error)` swaps in a local file when the API URL does not load.
+    -->
     <img
-      [src]="listing().imageUrl"
+      [src]="imageSource()"
       alt=""
       width="640"
       height="400"
       loading="lazy"
       decoding="async"
+      (error)="onImageError()"
     />
     @if (listing().featured) {
       <p class="badge">Featured</p>
@@ -40,11 +46,23 @@
       </div>
       <div>
         <dt>Annual revenue</dt>
-        <dd>{{ listing().annualRevenue | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+        <dd>
+          @if (listing().annualRevenue === null) {
+            Not disclosed
+          } @else {
+            {{ listing().annualRevenue | currency: 'USD' : 'symbol' : '1.0-0' }}
+          }
+        </dd>
       </div>
       <div>
         <dt>Cash flow</dt>
-        <dd>{{ listing().cashFlow | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+        <dd>
+          @if (listing().cashFlow === null) {
+            Not disclosed
+          } @else {
+            {{ listing().cashFlow | currency: 'USD' : 'symbol' : '1.0-0' }}
+          }
+        </dd>
       </div>
     </dl>
   </div>

@@ -7,7 +7,7 @@ function listing(overrides: Partial<BusinessListing> = {}): BusinessListing {
     id: 'lst-test',
     title: 'Harbor & Rye',
     description: 'A fictional neighborhood restaurant used in the card test.',
-    category: 'Restaurants',
+    category: 'Restaurant',
     location: 'Seattle, WA',
     askingPrice: 875_000,
     annualRevenue: 1_420_000,
@@ -36,7 +36,7 @@ describe('BusinessListingCard', () => {
     const compiled = await render(listing());
 
     expect(compiled.querySelector('h3')?.textContent).toContain('Harbor & Rye');
-    expect(compiled.textContent).toContain('Restaurants');
+    expect(compiled.textContent).toContain('Restaurant');
     expect(compiled.textContent).toContain('Seattle, WA');
     expect(compiled.textContent).toContain('fictional neighborhood restaurant');
     expect(compiled.textContent).toContain('Asking price');
@@ -60,5 +60,13 @@ describe('BusinessListingCard', () => {
     fixture.componentRef.setInput('listing', listing({ featured: false }));
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).not.toContain('Featured');
+  });
+
+  it('says a missing financial figure was not disclosed', async () => {
+    const compiled = await render(listing({ cashFlow: null, annualRevenue: null }));
+
+    expect(compiled.textContent).toContain('$875,000');
+    expect(compiled.textContent).toContain('Not disclosed');
+    expect(compiled.textContent).not.toContain('$1,420,000');
   });
 });

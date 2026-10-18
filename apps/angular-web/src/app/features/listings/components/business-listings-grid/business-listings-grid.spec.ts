@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { mockBusinessListings } from '../../data/mock-business-listings';
 import { BusinessListing } from '../../models/business-listing';
 import { BusinessListingsGrid } from './business-listings-grid';
 
@@ -27,13 +26,18 @@ describe('BusinessListingsGrid', () => {
 
   it('renders one card per listing, tracked content included', async () => {
     const fixture = TestBed.createComponent(BusinessListingsGrid);
-    fixture.componentRef.setInput('listings', mockBusinessListings);
+    fixture.componentRef.setInput('listings', [
+      listing('lst-a', 'Elm Street Bistro'),
+      listing('lst-b', 'King Street Bakery'),
+    ]);
     await fixture.whenStable();
 
-    const cards = fixture.nativeElement.querySelectorAll('app-business-listing-card');
-    expect(cards.length).toBe(mockBusinessListings.length);
-    expect(fixture.nativeElement.textContent).toContain('Harbor & Rye');
-    expect(fixture.nativeElement.textContent).toContain('Parcel Logic');
+    const cards = fixture.nativeElement.querySelectorAll(
+      'app-business-listing-card',
+    );
+    expect(cards.length).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Elm Street Bistro');
+    expect(fixture.nativeElement.textContent).toContain('King Street Bakery');
   });
 
   it('renders the empty state when the ready collection has no rows', async () => {
