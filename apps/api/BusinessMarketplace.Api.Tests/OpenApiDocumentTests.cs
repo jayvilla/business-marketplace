@@ -27,6 +27,8 @@ public class OpenApiDocumentTests : IClassFixture<WebApplicationFactory<Program>
         var json = await response.Content.ReadAsStringAsync();
 
         Assert.Contains("/api/health", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/api/listings", json, StringComparison.Ordinal);
+        Assert.Contains("/api/listings/{id}", json, StringComparison.Ordinal);
         Assert.Contains("Business Marketplace API", json, StringComparison.Ordinal);
     }
 

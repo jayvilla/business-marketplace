@@ -13,3 +13,13 @@ Accept: application/json
 GET {{BusinessMarketplace.Api_HostAddress}}/swagger/index.html
 
 ###
+
+GET {{BusinessMarketplace.Api_HostAddress}}/api/listings
+Accept: application/json
+
+###
+
+GET {{BusinessMarketplace.Api_HostAddress}}/api/listings/01900000-0000-7000-8000-000000000001
+Accept: application/json
+
+###
