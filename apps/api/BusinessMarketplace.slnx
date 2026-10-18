@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BusinessMarketplace.Api.Tests/BusinessMarketplace.Api.Tests.csproj" />
+  <Project Path="BusinessMarketplace.Api/BusinessMarketplace.Api.csproj" />
+</Solution>
