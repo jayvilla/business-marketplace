@@ -41,12 +41,25 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-// Singleton: one instance for the process, which matches a stateless NestJS
-// provider. Use AddScoped for a type that must not be shared across requests
-// (a DbContext, once a database exists). Use AddTransient when every
-// injection should get a new instance. The concrete class is registered
-// directly; nothing in this phase replaces HealthService.
+// HealthService has no per-request data, and nothing will swap it for
+// another implementation, so one instance for the process is enough.
+// NestJS providers are singletons unless the scope is changed.
 builder.Services.AddSingleton<HealthService>();
+
+// Callers will depend on IBusinessListingService. This line is the binding
+// from that contract to the in-memory class, the same role as a NestJS
+// provider registered against an injection token.
+//
+// Scoped: one instance per HTTP request, disposed at the end of the request.
+// Transient would construct a new instance at every injection point inside
+// that request. Singleton would construct one for the process.
+// Scoped is the lifetime a database session uses. A request-scoped service
+// may take that session in its constructor. A singleton must not: the
+// container would capture the session for the life of the process.
+// The sample catalog is static shared data, not a list created in the
+// service constructor, so the scoped lifetime does not give each request
+// a private mutable copy.
+builder.Services.AddScoped<IBusinessListingService, BusinessListingService>();
 
 // Browsers enforce CORS. The Angular dev server (:4200) and the Vue dev
 // server (:4201) are different origins from this API (:5000). Origins are
