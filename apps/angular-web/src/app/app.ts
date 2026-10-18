@@ -1,24 +1,26 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Footer } from './layout/footer/footer';
+import { Header } from './layout/header/header';
 
 /**
- * Application shell. It stays mounted for the life of the page and does not
- * render a feature itself.
+ * Application shell. It stays mounted for the life of the page.
  *
- * Standalone components list their own template dependencies in `imports`.
- * Nothing here is declared in an NgModule. `RouterOutlet` is the directive
- * that marks where the router inserts the component for the active URL.
+ * The template lists three landmarks and the outlet. Header and footer are
+ * separate components so menu behavior and footer markup do not accumulate
+ * in this class. This class has no fields: there is nothing for it to track.
  *
- * `OnPush` limits when Angular checks this view. The default strategy walks
- * the component tree whenever any application event might have changed data.
- * OnPush skips that walk unless an input reference changes, a DOM event
- * originates in this template, or a signal read during rendering updates.
- * The shell has no inputs and no local state, so those extra checks would
- * never find a change.
+ * Standalone `imports` are the template's dependencies. `Header` is listed
+ * because the template contains `<app-header>`. The Angular compiler checks
+ * that. A missing import is a build error, not a blank region at runtime.
+ *
+ * `OnPush` on this shell does not block the header. A signal write in
+ * `Header` marks that child view, and Angular refreshes the child even
+ * when this parent has nothing new to render.
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [Header, Footer, RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

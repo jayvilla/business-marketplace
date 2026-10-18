@@ -1,5 +1,21 @@
 <!--
-  Feature pages are created and destroyed after this outlet as the URL changes.
-  The shell itself is not swapped out.
+  In-page fragment, not a route. First focusable control, so keyboard users
+  can skip the header. It becomes visible when focused (see `app.scss`).
 -->
-<router-outlet />
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<app-header />
+
+<!--
+  The only `<main>` in the document. Routed pages must not render another,
+  or assistive technology reports two main landmarks.
+  `tabindex="-1"` lets this skip link focus `main` without putting `main`
+  itself in the tab order.
+  The active page is inserted after `<router-outlet>`, still inside `main`,
+  so every route picks up the same width and padding.
+-->
+<main id="main-content" tabindex="-1">
+  <router-outlet />
+</main>
+
+<app-footer />

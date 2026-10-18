@@ -1,0 +1,28 @@
+// Media queries are resolved while Sass compiles the stylesheet.
+// A CSS custom property is resolved later, on the element, so it cannot
+// define a breakpoint. These mixins are the compile-time half of the tokens.
+//
+// Mobile is the default (320px and up). There is no mixin for it.
+// 48rem / 64rem / 90rem match 768 / 1024 / 1440 when the root font size is 16px.
+
+$tablet: 48rem;
+$desktop: 64rem;
+$wide: 90rem;
+
+@mixin tablet {
+  @media (min-width: $tablet) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: $desktop) {
+    @content;
+  }
+}
+
+@mixin wide {
+  @media (min-width: $wide) {
+    @content;
+  }
+}

@@ -18,7 +18,7 @@ describe('app routes', () => {
 
     expect(TestBed.inject(Router).url).toBe('/listings');
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain(
-      'Business listings',
+      'Businesses for Sale',
     );
   });
 
@@ -27,6 +27,8 @@ describe('app routes', () => {
     const page = await harness.navigateByUrl('/listings', ListingsPage);
 
     expect(page).toBeInstanceOf(ListingsPage);
+    expect(harness.routeNativeElement?.textContent).toContain('Search and filters');
+    expect(harness.routeNativeElement?.textContent).toContain('Listing results');
   });
 
   it('renders the not found page for an unknown url', async () => {

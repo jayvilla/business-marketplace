@@ -1,0 +1,111 @@
+@use 'breakpoints' as bp;
+
+/*
+ * These selectors are encapsulated to `app-header`. The same class name in
+ * the footer does not pick up these rules. Tokens still apply, because
+ * custom properties inherit through the component boundary.
+ *
+ * Closed mobile nav uses `display: none` rather than a height animation.
+ * An element with zero height can remain in the tab order. `display: none`
+ * removes it from keyboard and screen-reader navigation until it is opened.
+ */
+
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-2) var(--container-padding);
+}
+
+.brand {
+  margin-right: auto;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: var(--line-height-heading);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--color-primary);
+}
+
+.menu-toggle {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.menu-toggle:hover {
+  background: var(--color-surface-muted);
+}
+
+.nav {
+  display: none;
+  flex: 1 0 100%;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+
+.nav.is-open {
+  display: flex;
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  background: var(--color-surface-muted);
+}
+
+.nav a.is-active {
+  color: var(--color-primary);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+
+@include bp.tablet {
+  .menu-toggle {
+    display: none;
+  }
+
+  .nav,
+  .nav.is-open {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 0;
+  }
+}

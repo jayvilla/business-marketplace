@@ -1,9 +1,42 @@
+@use 'tokens';
+
 /*
- * Document defaults only. Visual rules for a screen live in that
- * component's stylesheet so a feature can be removed with its folder.
+ * Document defaults and tokens live here because every screen needs them.
+ * A color or a spacing step that only one component uses belongs in that
+ * component's stylesheet, where deleting the component deletes the rule.
+ *
+ * Component styles are encapsulated: Angular rewrites their selectors so
+ * they do not leak. Rules in this file are not rewritten, which is why
+ * `:root` and `body` can live here and a feature's class cannot.
  */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  color: #1c1917;
-  background: #fafaf9;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 /**
  * Fallback for a URL that matched no earlier route.
  *
+ * Rendered inside the shell's `<main>`, so this template has no main of its own.
+ *
  * It lives next to the shell rather than under `features/listings` because
  * an unknown address is not a listings concept. It also is not a shared
  * widget: nothing embeds it. The router is its only caller.

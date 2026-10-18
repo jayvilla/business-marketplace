@@ -1,15 +1,71 @@
+@use 'breakpoints' as bp;
+
 /*
- * `:host` is the component's own element (`app-listings-page`).
- * Angular's default emulated encapsulation rewrites these selectors so
- * they apply only inside this component, even though the CSS ends up
- * in a shared stylesheet.
+ * `:host` is `app-listings-page`. Encapsulation limits the rules below to
+ * this component. Width and page padding live on the shell's `main`, so
+ * this file does not set a max-width of its own.
  */
+
 :host {
   display: block;
-  box-sizing: border-box;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 2rem 1.25rem;
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
+}
+
+.intro h1,
+.placeholder h2,
+.intro p,
+.placeholder p {
+  margin: 0;
+}
+
+.intro h1 {
+  font-size: var(--font-size-h1);
+  line-height: var(--line-height-heading);
+  letter-spacing: -0.02em;
+}
+
+.intro p {
+  margin-top: var(--space-3);
+  max-width: 42rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+}
+
+.placeholders {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.placeholder {
+  padding: var(--space-5);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.eyebrow {
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.placeholder h2 {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-heading);
+}
+
+.placeholder p:last-child {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+@include bp.desktop {
+  .placeholders {
+    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+    align-items: stretch;
+  }
 }

@@ -3,6 +3,9 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 /**
  * Routed placeholder for the listings feature.
  *
+ * The shell renders the document `<main>` and the content width. This
+ * template starts at the page title so the heading order stays h1, then h2.
+ *
  * The router instantiates this class when `/listings` is active and destroys
  * it on the way out. `App` never imports it. That is what keeps the feature
  * out of the shell: the only link is the lazy route.

@@ -17,6 +17,6 @@ export const listingsRoutes: Routes = [
   {
     path: '',
     component: ListingsPage,
-    title: 'Business listings',
+    title: 'Businesses for Sale',
   },
 ];

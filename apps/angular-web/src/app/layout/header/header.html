@@ -1,0 +1,51 @@
+<header class="bar">
+  <div class="inner">
+    <a class="brand" routerLink="/listings">Business Marketplace</a>
+
+    <!--
+      Native button, not a link: it changes state on this page and does not
+      navigate. `aria-expanded` tells assistive tech whether the disclosure
+      is open. `aria-controls` points at the nav it operates.
+    -->
+    <button
+      #menuButton
+      type="button"
+      class="menu-toggle"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="primary-navigation"
+      (click)="toggleMenu()"
+    >
+      {{ menuOpen() ? 'Close' : 'Menu' }}
+    </button>
+
+    <!--
+      `routerLink` asks the Angular router to change the URL. A plain `href`
+      would load a new document and restart the app. `routerLinkActive`
+      adds `is-active` when the URL matches, and `ariaCurrentWhenActive`
+      sets `aria-current="page"` for the same match.
+    -->
+    <nav
+      id="primary-navigation"
+      class="nav"
+      [class.is-open]="menuOpen()"
+      aria-label="Primary"
+    >
+      <a
+        routerLink="/listings"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        (click)="menuOpen.set(false)"
+      >
+        Home
+      </a>
+      <a
+        routerLink="/listings"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        (click)="menuOpen.set(false)"
+      >
+        Listings
+      </a>
+    </nav>
+  </div>
+</header>

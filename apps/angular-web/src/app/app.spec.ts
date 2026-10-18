@@ -6,16 +6,25 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      // The outlet injects Router. An empty table is enough for this test;
-      // route behavior is covered in app.routes.spec.ts.
+      // The outlet and the header links inject Router. An empty table is
+      // enough to render the shell; route behavior is covered separately.
       providers: [provideRouter([])],
     }).compileComponents();
   });
 
-  it('renders the outlet the router fills with the active page', async () => {
+  it('renders the shell landmarks around the router outlet', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.skip-link')?.textContent).toContain(
+      'Skip to content',
+    );
+    expect(compiled.querySelector('app-header')).not.toBeNull();
+    expect(compiled.querySelector('main#main-content')).not.toBeNull();
     expect(compiled.querySelector('router-outlet')).not.toBeNull();
+    expect(compiled.querySelector('app-footer')?.textContent).toContain(
+      '© 2026 Business Marketplace',
+    );
   });
 });
