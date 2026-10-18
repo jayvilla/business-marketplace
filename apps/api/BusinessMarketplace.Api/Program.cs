@@ -1,5 +1,7 @@
 using BusinessMarketplace.Api.Configuration;
+using BusinessMarketplace.Api.Data;
 using BusinessMarketplace.Api.Services;
+using Microsoft.EntityFrameworkCore;
 
 // Composition root.
 //
@@ -14,7 +16,8 @@ using BusinessMarketplace.Api.Services;
 // Program.Main, like a Node module that runs from the top of the file.
 // Framework namespaces (Microsoft.AspNetCore.Builder and the logging,
 // configuration, and DI namespaces) are imported by the Web SDK because
-// the csproj sets ImplicitUsings. The two usings above are ours.
+// the csproj sets ImplicitUsings. The project usings above are ours.
+// Microsoft.EntityFrameworkCore is explicit because UseNpgsql lives there.
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,19 +49,27 @@ builder.Services.AddOpenApi(options =>
 // NestJS providers are singletons unless the scope is changed.
 builder.Services.AddSingleton<HealthService>();
 
-// Callers will depend on IBusinessListingService. This line is the binding
-// from that contract to the in-memory class, the same role as a NestJS
-// provider registered against an injection token.
-//
-// Scoped: one instance per HTTP request, disposed at the end of the request.
-// Transient would construct a new instance at every injection point inside
-// that request. Singleton would construct one for the process.
-// Scoped is the lifetime a database session uses. A request-scoped service
-// may take that session in its constructor. A singleton must not: the
-// container would capture the session for the life of the process.
-// The sample catalog is static shared data, not a list created in the
-// service constructor, so the scoped lifetime does not give each request
-// a private mutable copy.
+// ConnectionStrings__DefaultConnection is the environment-variable form of
+// ConnectionStrings:DefaultConnection. Environment variables override the
+// JSON files. The local default lives in appsettings.Development.json and
+// matches docker-compose.yml. The value is not written to the log.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is not set. Set ConnectionStrings__DefaultConnection.");
+}
+
+// AddDbContext registers AppDbContext as scoped. UseNpgsql selects the
+// PostgreSQL provider. Migrations are applied with dotnet ef, not at startup.
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Callers depend on IBusinessListingService. This binds that contract to
+// the EF implementation. The service is scoped so it can take the scoped
+// AppDbContext. A singleton service must not take a DbContext: the container
+// would keep that one session for the life of the process, and a context
+// cannot be used by two requests at once.
 builder.Services.AddScoped<IBusinessListingService, BusinessListingService>();
 
 // Browsers enforce CORS. The Angular dev server (:4200) and the Vue dev
@@ -102,6 +113,24 @@ if (builder.Environment.IsDevelopment())
 // Services cannot be registered after Build(). Middleware is separate:
 // it is the request pipeline, not the DI container.
 var app = builder.Build();
+
+// Explicit development seed. Startup does not call this, and neither does
+// production. Apply migrations first, then:
+//   dotnet run --project apps/api/BusinessMarketplace.Api --launch-profile http -- --seed
+if (args.Contains("--seed"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            $"Refusing to seed the {app.Environment.EnvironmentName} environment.");
+    }
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var inserted = await DevelopmentListingSeeder.SeedAsync(db);
+    app.Logger.LogInformation("Development seed inserted {InsertedCount} listings.", inserted);
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {

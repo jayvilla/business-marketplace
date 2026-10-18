@@ -51,6 +51,9 @@ public class OpenApiProductionTests : IClassFixture<WebApplicationFactory<Progra
         _client = factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Production);
+            builder.UseSetting(
+                "ConnectionStrings:DefaultConnection",
+                "Host=127.0.0.1;Port=5432;Database=business_marketplace;Username=postgres;Password=postgres");
         }).CreateClient();
     }
 

@@ -3,14 +3,12 @@ using BusinessMarketplace.Api.Models;
 namespace BusinessMarketplace.Api.Data;
 
 /// <summary>
-/// Fictional listings for the in-memory service. Names, places, and figures
-/// are invented.
+/// Fictional listings inserted by the development seed command. Names,
+/// places, and figures are invented.
 ///
-/// The array is created once, the first time this type is used, and then
-/// shared by every request. A scoped service must not keep its own mutable
-/// copy: two requests would diverge, and a later write on one copy would
-/// not exist on the other. Nothing in this phase adds, removes, or replaces
-/// entries.
+/// The API does not read this array at request time. PostgreSQL does.
+/// The array is the source the seeder copies, once, into rows whose ids
+/// match these values.
 ///
 /// Ids and timestamps are fixed so a test can ask for the same listing
 /// twice and get the same identity. The type does not call Guid.NewGuid

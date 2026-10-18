@@ -28,6 +28,10 @@ public class BusinessListingsEndpointTests : IClassFixture<WebApplicationFactory
         _client = factory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<IBusinessListingService, SampleCatalogListingService>();
+            });
         }).CreateClient();
     }
 
