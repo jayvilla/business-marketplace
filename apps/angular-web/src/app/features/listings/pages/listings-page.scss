@@ -1,9 +1,9 @@
 @use 'breakpoints' as bp;
 
 /*
- * `:host` is `app-listings-page`. Encapsulation limits the rules below to
- * this component. Width and page padding live on the shell's `main`, so
- * this file does not set a max-width of its own.
+ * `:host` is `app-listings-page`. Width and page padding live on the shell's
+ * `main`. This file only arranges the intro, the reserved filter column, and
+ * the results column.
  */
 
 :host {
@@ -11,9 +11,11 @@
 }
 
 .intro h1,
-.placeholder h2,
+.filters h2,
+.results h2,
 .intro p,
-.placeholder p {
+.filters p,
+.count {
   margin: 0;
 }
 
@@ -30,13 +32,13 @@
   font-size: var(--font-size-lg);
 }
 
-.placeholders {
+.layout {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
   margin-top: var(--space-6);
 }
 
-.placeholder {
+.filters {
   padding: var(--space-5);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -52,20 +54,26 @@
   text-transform: uppercase;
 }
 
-.placeholder h2 {
+.filters h2,
+.results h2 {
   margin-top: var(--space-2);
   font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
 }
 
-.placeholder p:last-child {
+.results h2 {
+  margin-top: 0;
+}
+
+.filters p:last-child,
+.count {
   margin-top: var(--space-2);
   color: var(--color-text-muted);
 }
 
 @include bp.desktop {
-  .placeholders {
-    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
-    align-items: stretch;
+  .layout {
+    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+    align-items: start;
   }
 }

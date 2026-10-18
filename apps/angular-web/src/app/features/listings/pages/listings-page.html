@@ -1,28 +1,33 @@
 <!--
   No `<main>` here. The shell already renders the document's main landmark.
-  These sections are layout only. They reserve space for search and results
-  without pretending that listings exist.
+  Heading order is h1, then h2 for each region, then h3 on each card.
 -->
 <div class="page">
   <header class="intro">
     <h1>Businesses for Sale</h1>
     <p>
-      Browse businesses that owners have listed for sale. Search, filters, and
-      results will be added in a later step.
+      These listings are fictional samples for the interface. They are not real
+      businesses for sale. Search and filters will be added in a later step.
     </p>
   </header>
 
-  <div class="placeholders">
-    <section class="placeholder" aria-labelledby="search-heading">
+  <div class="layout">
+    <section class="filters" aria-labelledby="search-heading">
       <p class="eyebrow">Coming next</p>
       <h2 id="search-heading">Search and filters</h2>
       <p>Search and filter controls will appear here.</p>
     </section>
 
-    <section class="placeholder" aria-labelledby="results-heading">
-      <p class="eyebrow">Coming next</p>
+    <section class="results" aria-labelledby="results-heading">
       <h2 id="results-heading">Listing results</h2>
-      <p>Businesses for sale will be listed here.</p>
+      <!--
+        The count describes the array this page passes in. It is not inside
+        the grid, because the grid also renders loading and empty, where a
+        sample count would be a lie. The service phase should drive this
+        number from the same state as the grid.
+      -->
+      <p class="count">{{ sampleListings.length }} fictional sample listings</p>
+      <app-business-listings-grid [listings]="sampleListings" />
     </section>
   </div>
 </div>

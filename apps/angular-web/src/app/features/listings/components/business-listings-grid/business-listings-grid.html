@@ -1,0 +1,38 @@
+@if (status() === 'loading') {
+  <!--
+    The skeleton is visual only. `role="status"` is the text a screen reader
+    hears. `aria-hidden` on the blocks keeps the decorative bars out of that
+    announcement. There is no native element for a loading placeholder.
+  -->
+  <p class="visually-hidden" role="status">Loading listings.</p>
+  <div class="grid" aria-hidden="true">
+    @for (slot of skeletonSlots; track slot) {
+      <div class="skeleton">
+        <div class="skeleton-media"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+        </div>
+      </div>
+    }
+  </div>
+} @else if (status() === 'error') {
+  <p class="state" role="alert">{{ errorMessage() }}</p>
+} @else if (listings().length === 0) {
+  <p class="state">No businesses are listed yet.</p>
+} @else {
+  <!--
+    `track listing.id` is the item's identity. Tracking the loop index
+    reuses the DOM node at that position, so reordering the array would
+    attach Harbor & Rye's image element to a different business.
+    The id stays on the same card, and the browser keeps that image.
+  -->
+  <ul class="grid">
+    @for (listing of listings(); track listing.id) {
+      <li>
+        <app-business-listing-card [listing]="listing" />
+      </li>
+    }
+  </ul>
+}

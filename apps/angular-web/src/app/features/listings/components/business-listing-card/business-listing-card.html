@@ -1,0 +1,51 @@
+<article class="card">
+  <div class="media">
+    <!--
+      Decorative. The category and title are already text, and these SVGs
+      repeat that category as a color block. An empty alt removes the image
+      from the accessibility tree. A real photograph later needs a description
+      of what the photo shows, written on the model, not the business name
+      repeated as the alt.
+    -->
+    <img
+      [src]="listing().imageUrl"
+      alt=""
+      width="640"
+      height="400"
+      loading="lazy"
+      decoding="async"
+    />
+    @if (listing().featured) {
+      <p class="badge">Featured</p>
+    }
+  </div>
+
+  <div class="body">
+    <p class="category">{{ listing().category }}</p>
+    <h3>{{ listing().title }}</h3>
+    <p class="location">{{ listing().location }}</p>
+    <p class="description">{{ listing().description }}</p>
+
+    <!--
+      `dl` pairs each amount with its name. The `currency` pipe formats the
+      number in the template. A method here would run on every check and
+      would hide the locale rule inside the class. The pipe is pure: Angular
+      recomputes it when the number or the arguments change.
+      Values are whole dollars, so the fraction digits stay at zero.
+    -->
+    <dl class="figures">
+      <div>
+        <dt>Asking price</dt>
+        <dd>{{ listing().askingPrice | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+      </div>
+      <div>
+        <dt>Annual revenue</dt>
+        <dd>{{ listing().annualRevenue | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+      </div>
+      <div>
+        <dt>Cash flow</dt>
+        <dd>{{ listing().cashFlow | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+      </div>
+    </dl>
+  </div>
+</article>

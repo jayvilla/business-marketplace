@@ -1,24 +1,22 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { mockBusinessListings } from '../data/mock-business-listings';
+import { BusinessListingsGrid } from '../components/business-listings-grid/business-listings-grid';
 
 /**
- * Routed placeholder for the listings feature.
+ * Listings route. It owns the page heading and the sample collection.
+ * The grid owns how that collection looks.
  *
- * The shell renders the document `<main>` and the content width. This
- * template starts at the page title so the heading order stays h1, then h2.
- *
- * The router instantiates this class when `/listings` is active and destroys
- * it on the way out. `App` never imports it. That is what keeps the feature
- * out of the shell: the only link is the lazy route.
- *
- * OnPush matters more once this screen reads listing data. A signal written
- * by a listings service will refresh this view, because reading a signal
- * during template rendering records it as a dependency. Unrelated updates
- * elsewhere in the app will not.
+ * `sampleListings` is the mock array itself, not a copy. The objects are
+ * readonly, and this phase never replaces them. When a service exists, this
+ * field becomes a signal of request state and the grid inputs stay the same.
  */
 @Component({
   selector: 'app-listings-page',
+  imports: [BusinessListingsGrid],
   templateUrl: './listings-page.html',
   styleUrl: './listings-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ListingsPage {}
+export class ListingsPage {
+  readonly sampleListings = mockBusinessListings;
+}
