@@ -1,0 +1,15 @@
+/*
+ * `:host` is the component's own element (`app-listings-page`).
+ * Angular's default emulated encapsulation rewrites these selectors so
+ * they apply only inside this component, even though the CSS ends up
+ * in a shared stylesheet.
+ */
+:host {
+  display: block;
+  box-sizing: border-box;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
