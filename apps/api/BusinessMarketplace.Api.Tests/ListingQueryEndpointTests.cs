@@ -132,6 +132,102 @@ public class ListingQueryEndpointTests : IClassFixture<WebApplicationFactory<Pro
         Assert.Equal(8, page.TotalCount);
     }
 
+    [Fact]
+    public async Task CombinedFilters_ApplySearchCategoryPriceAndSortTogether()
+    {
+        // The Angular screen sends these keys together. A test that covers
+        // one key at a time would still pass if the controller applied only
+        // the last key.
+        var page = await ReadPage(
+            "search=street&category=Restaurant&minPrice=500000&maxPrice=900000&sortBy=AskingPrice&sortDirection=Asc");
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(
+            ["King Street Bakery", "Elm Street Bistro"],
+            page.Items.Select(listing => listing.Title).ToArray());
+    }
+
+    [Fact]
+    public async Task CombinedFilters_WithNoMatch_IsAnEmptyPage()
+    {
+        var page = await ReadPage("category=Restaurant&search=zzzz-no-such-business");
+
+        Assert.Equal(0, page.TotalCount);
+        Assert.Empty(page.Items);
+        Assert.Equal(1, page.Page);
+    }
+
+    [Fact]
+    public async Task PageJson_UsesTheNamesTheAngularClientReads()
+    {
+        var response = await _client.GetAsync("/api/listings?category=Healthcare&pageSize=8");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+
+        Assert.Equal(JsonValueKind.Array, root.GetProperty("items").ValueKind);
+        Assert.Equal(1, root.GetProperty("page").GetInt32());
+        Assert.Equal(8, root.GetProperty("pageSize").GetInt32());
+        Assert.True(root.GetProperty("totalCount").GetInt32() >= 1);
+        Assert.False(root.TryGetProperty("Items", out _));
+        Assert.False(root.TryGetProperty("totalPages", out _));
+        Assert.False(root.TryGetProperty("data", out _));
+
+        var mesa = root.GetProperty("items").EnumerateArray()
+            .Single(item => item.GetProperty("title").GetString() == "Mesa Pediatrics");
+        Assert.Equal(JsonValueKind.String, mesa.GetProperty("id").ValueKind);
+        Assert.Equal(JsonValueKind.Number, mesa.GetProperty("askingPrice").ValueKind);
+        Assert.Equal(JsonValueKind.Number, mesa.GetProperty("annualRevenue").ValueKind);
+        Assert.Equal(JsonValueKind.Null, mesa.GetProperty("cashFlow").ValueKind);
+        Assert.Equal("Healthcare", mesa.GetProperty("category").GetString());
+        Assert.Equal("Tucson", mesa.GetProperty("city").GetString());
+        Assert.Equal("AZ", mesa.GetProperty("state").GetString());
+        Assert.False(mesa.TryGetProperty("status", out _));
+        Assert.False(mesa.TryGetProperty("createdAt", out _));
+        Assert.False(mesa.TryGetProperty("location", out _));
+        Assert.False(mesa.TryGetProperty("featured", out _));
+    }
+
+    [Fact]
+    public async Task PreflightFromTheAngularDevServer_AllowsGet()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/listings");
+        request.Headers.TryAddWithoutValidation("Origin", "http://localhost:4200");
+        request.Headers.TryAddWithoutValidation("Access-Control-Request-Method", "GET");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(
+            "http://localhost:4200",
+            response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+    }
+
+    [Fact]
+    public async Task PreflightFromAnUnknownOrigin_DoesNotAllowIt()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/listings");
+        request.Headers.TryAddWithoutValidation("Origin", "http://localhost:9999");
+        request.Headers.TryAddWithoutValidation("Access-Control-Request-Method", "GET");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
+    public async Task SortByAnUnsupportedField_IsRejected()
+    {
+        var response = await _client.GetAsync("/api/listings?sortBy=Title");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
+        Assert.False(string.IsNullOrWhiteSpace(problem.Extensions["traceId"]?.ToString()));
+    }
+
     [Theory]
     [InlineData("page=0")]
     [InlineData("pageSize=100")]

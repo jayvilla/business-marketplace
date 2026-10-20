@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { Subject, switchMap } from 'rxjs';
 import {
   HttpTestingController,
   provideHttpClientTesting,
@@ -161,6 +162,44 @@ describe('BusinessListingsService', () => {
 
     expect(status).toBe(400);
     expect(received).toBe(false);
+  });
+
+  it('drops an in-flight request when a newer query replaces it', () => {
+    // The listings page uses switchMap for the same reason. Unsubscribing
+    // aborts the browser request. The API receives that abort as a
+    // CancellationToken, but a command that has already reached PostgreSQL
+    // may still finish. The guarantee is that the late response is not
+    // applied to the screen.
+    const queries = new Subject<typeof defaultListingQuery>();
+    const titles: string[] = [];
+    queries
+      .pipe(switchMap((query) => service.getListings(query)))
+      .subscribe((result) => {
+        const title = result.items[0]?.title;
+        if (title !== undefined) {
+          titles.push(title);
+        }
+      });
+
+    queries.next({ ...defaultListingQuery, search: 'bakery' });
+    queries.next({ ...defaultListingQuery, category: 'Retail' });
+
+    const requests = http.match((candidate) => candidate.url === listingsUrl);
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.cancelled).toBe(true);
+    expect(requests[1]?.request.params.get('category')).toBe('Retail');
+    requests[1]?.flush(
+      page([
+        summary({
+          title: 'Highline Outfitters',
+          category: 'Retail',
+          city: 'Bozeman',
+          state: 'MT',
+        }),
+      ]),
+    );
+
+    expect(titles).toEqual(['Highline Outfitters']);
   });
 
   it('rejects a 200 that is not a page instead of treating it as no listings', () => {

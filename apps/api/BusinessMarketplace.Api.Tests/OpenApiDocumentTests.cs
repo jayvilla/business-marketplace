@@ -72,4 +72,16 @@ public class OpenApiProductionTests : IClassFixture<WebApplicationFactory<Progra
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetHealth_DoesNotAllowTheAngularOriginOutsideDevelopment()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/health");
+        request.Headers.TryAddWithoutValidation("Origin", "http://localhost:4200");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
 }
