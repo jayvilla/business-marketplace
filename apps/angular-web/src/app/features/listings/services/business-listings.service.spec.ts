@@ -37,6 +37,12 @@ function page(
   return { items, page: 1, pageSize: 6, totalCount };
 }
 
+/**
+ * `provideHttpClientTesting` replaces the real network. `HttpTestingController`
+ * is the request the service would have sent. `flush` is the response we
+ * choose. Nothing here opens a socket, so the spec does not need the API
+ * or PostgreSQL.
+ */
 describe('BusinessListingsService', () => {
   let service: BusinessListingsService;
   let http: HttpTestingController;
@@ -133,6 +139,27 @@ describe('BusinessListingsService', () => {
     });
 
     expect(failed).toBe(true);
+    expect(received).toBe(false);
+  });
+
+  it('forwards an HTTP 400 instead of emitting an empty catalog', () => {
+    let status = -1;
+    let received = false;
+    service.getListings(defaultListingQuery).subscribe({
+      next: () => {
+        received = true;
+      },
+      error: (error: { status: number }) => {
+        status = error.status;
+      },
+    });
+
+    http.expectOne((candidate) => candidate.url === listingsUrl).flush(
+      { title: 'One or more validation errors occurred.' },
+      { status: 400, statusText: 'Bad Request' },
+    );
+
+    expect(status).toBe(400);
     expect(received).toBe(false);
   });
 

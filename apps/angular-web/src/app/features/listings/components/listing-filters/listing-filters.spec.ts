@@ -2,6 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { defaultListingQuery, ListingFilters } from '../../models/listing-query';
 import { ListingFiltersForm } from './listing-filters';
 
+/**
+ * The form is tested through its DOM. `vi.useFakeTimers` stands in for
+ * the 300ms debounce so the spec does not sleep. A real timer would make
+ * the result depend on how busy the machine is.
+ */
 describe('ListingFiltersForm', () => {
   async function setup(): Promise<{
     element: HTMLElement;
@@ -116,6 +121,53 @@ describe('ListingFiltersForm', () => {
         maxPrice: null,
         sort: 'newest',
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('emits a sort immediately', async () => {
+    const { element, emitted } = await setup();
+
+    setControl(element, 'listing-sort', 'price-asc');
+
+    expect(emitted[emitted.length - 1]?.sort).toBe('price-asc');
+  });
+
+  it('applies a search from the submit button without waiting out the debounce', async () => {
+    const { element, emitted } = await setup();
+    vi.useFakeTimers();
+    try {
+      setControl(element, 'listing-search', 'bakery');
+      element.querySelector('form')?.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+
+      expect(emitted[emitted.length - 1]?.search).toBe('bakery');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('associates a price error with the price fields only', async () => {
+    const { element, detectChanges } = await setup();
+    vi.useFakeTimers();
+    try {
+      setControl(element, 'listing-min-price', 'twelve');
+      await vi.advanceTimersByTimeAsync(300);
+      detectChanges();
+
+      const search = element.querySelector('#listing-search');
+      const minPrice = element.querySelector('#listing-min-price');
+      const maxPrice = element.querySelector('#listing-max-price');
+      expect(search?.getAttribute('aria-invalid')).toBeNull();
+      expect(search?.getAttribute('aria-describedby')).toBeNull();
+      expect(minPrice?.getAttribute('aria-invalid')).toBe('true');
+      expect(minPrice?.getAttribute('aria-describedby')).toBe('listing-filter-error');
+      expect(maxPrice?.getAttribute('aria-describedby')).toBe('listing-filter-error');
+      expect(element.querySelector('#listing-filter-error')?.getAttribute('role')).toBe(
+        'alert',
+      );
     } finally {
       vi.useRealTimers();
     }

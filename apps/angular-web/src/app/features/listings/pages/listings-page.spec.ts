@@ -14,6 +14,20 @@ import { BusinessListingPageResponse } from '../api/business-listing-page';
 import { BusinessListingSummary } from '../api/business-listing-summary';
 import { ListingsPage } from './listings-page';
 
+/**
+ * This spec renders the real page, the real form, and the real service.
+ * `provideHttpClientTesting` is the only stand-in: it captures the GET
+ * the page would send to ASP.NET Core. `flush` answers it.
+ *
+ * `RouterTestingHarness` is the fixture for a routed component. The
+ * assertions use the URL, the request query string, and the text in the
+ * page. They do not read private fields. A test that only checked a
+ * signal would still pass if the template stopped showing the result.
+ *
+ * `vi.waitFor` polls until the request exists. The app is zoneless, so
+ * `fakeAsync` is not available. There is no `setTimeout` sleep.
+ */
+
 function summary(title: string, id = title): BusinessListingSummary {
   return {
     id,
@@ -85,6 +99,7 @@ describe('ListingsPage', () => {
     expect(text).toContain('King Street Bakery');
     expect(text).toContain('8 listings');
     expect(text).toContain('Page 1 of 2');
+    expect(document.title).toBe('Businesses for Sale');
   });
 
   it('initializes search, category, and page from the URL', async () => {
@@ -303,5 +318,161 @@ describe('ListingsPage', () => {
     expect(text).toContain('Check your connection');
     expect(text).not.toContain('No businesses are listed yet.');
     expect(harness.routeNativeElement?.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  it('sends the API sort fields when the sort control changes', async () => {
+    const pending = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).flush(envelope(['King Street Bakery'], 8));
+    await pending;
+    await harness.fixture.whenStable();
+
+    const sort = harness.routeNativeElement?.querySelector(
+      '#listing-sort',
+    ) as HTMLSelectElement;
+    sort.value = 'price-asc';
+    sort.dispatchEvent(new Event('change'));
+    sort.dispatchEvent(new Event('input'));
+
+    const request = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('sortBy') === 'AskingPrice',
+    );
+    expect(request.request.params.get('sortDirection')).toBe('Asc');
+    expect(request.request.params.has('page')).toBe(false);
+    request.flush(envelope(['Highline Outfitters'], 8));
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toContain('sortBy=AskingPrice');
+    expect(harness.routeNativeElement?.textContent).toContain('Highline Outfitters');
+  });
+
+  it('drops the page number when a filter changes', async () => {
+    const pending = harness.navigateByUrl('/listings?page=2');
+    (await nextRequest(http, (candidate) => candidate.params.get('page') === '2')).flush(
+      envelope(['Northline Software'], 8, 2),
+    );
+    await pending;
+    await harness.fixture.whenStable();
+
+    const category = harness.routeNativeElement?.querySelector(
+      '#listing-category',
+    ) as HTMLSelectElement;
+    category.value = 'Retail';
+    category.dispatchEvent(new Event('change'));
+    category.dispatchEvent(new Event('input'));
+
+    const request = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('category') === 'Retail',
+    );
+    expect(request.request.params.has('page')).toBe(false);
+    request.flush(envelope(['Highline Outfitters']));
+    await harness.fixture.whenStable();
+
+    const url = TestBed.inject(Router).url;
+    expect(url).toContain('category=Retail');
+    expect(url).not.toContain('page=');
+  });
+
+  it('shows a 400 as a rejected query and keeps the current search', async () => {
+    const pending = harness.navigateByUrl('/listings?search=bakery');
+    (await nextRequest(http)).flush(
+      { title: 'One or more validation errors occurred.' },
+      { status: 400, statusText: 'Bad Request' },
+    );
+    await pending;
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Those filters were rejected.');
+    expect(text).not.toContain('No businesses match these filters.');
+    expect(TestBed.inject(Router).url).toContain('search=bakery');
+    const search = harness.routeNativeElement?.querySelector(
+      '#listing-search',
+    ) as HTMLInputElement;
+    expect(search.value).toBe('bakery');
+  });
+
+  it('moves focus to the results heading when the page changes', async () => {
+    const pending = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).flush(envelope(['King Street Bakery'], 8));
+    await pending;
+    await harness.fixture.whenStable();
+
+    const next = [...(harness.routeNativeElement?.querySelectorAll('button') ?? [])].find(
+      (button) => button.textContent?.includes('Next page'),
+    ) as HTMLButtonElement;
+    next.click();
+    const request = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('page') === '2',
+    );
+
+    expect(document.activeElement?.id).toBe('results-heading');
+    request.flush(envelope(['Northline Software'], 8, 2));
+    await harness.fixture.whenStable();
+  });
+
+  it('sends one request when Retry is clicked twice before the GET starts', async () => {
+    const pending = harness.navigateByUrl('/listings?search=bakery');
+    (await nextRequest(http)).flush('unavailable', {
+      status: 500,
+      statusText: 'Server Error',
+    });
+    await pending;
+    await harness.fixture.whenStable();
+
+    const retry = [...(harness.routeNativeElement?.querySelectorAll('button') ?? [])].find(
+      (button) => button.textContent?.includes('Try again'),
+    ) as HTMLButtonElement;
+    // Both clicks land before `toObservable` emits. The pipeline reads the
+    // latest nonce once, so the second click must not become a second GET.
+    retry.click();
+    retry.click();
+    const again = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('search') === 'bakery',
+    );
+    await harness.fixture.whenStable();
+    http.expectNone((candidate) => candidate.params.get('search') === 'bakery');
+    again.flush(envelope(['King Street Bakery']));
+    await harness.fixture.whenStable();
+    expect(harness.routeNativeElement?.textContent).toContain('King Street Bakery');
+  });
+
+  it('follows Forward to the query that Back left', async () => {
+    const firstNavigation = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).flush(envelope(['King Street Bakery'], 8));
+    await firstNavigation;
+
+    const secondNavigation = harness.navigateByUrl('/listings?category=Retail');
+    (await nextRequest(
+      http,
+      (candidate) => candidate.params.get('category') === 'Retail',
+    )).flush(envelope(['Highline Outfitters']));
+    await secondNavigation;
+
+    const location = TestBed.inject(Location) as SpyLocation;
+    location.back();
+    const restoredNavigation = harness.navigateByUrl(location.path());
+    (await nextRequest(
+      http,
+      (candidate) => !candidate.params.has('category'),
+    )).flush(envelope(['King Street Bakery'], 8));
+    await restoredNavigation;
+
+    location.forward();
+    expect(location.path()).toBe('/listings?category=Retail');
+    const forwardNavigation = harness.navigateByUrl(location.path());
+    const request = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('category') === 'Retail',
+    );
+    request.flush(envelope(['Highline Outfitters']));
+    await forwardNavigation;
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toContain('category=Retail');
+    expect(harness.routeNativeElement?.textContent).toContain('Highline Outfitters');
   });
 });

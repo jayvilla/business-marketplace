@@ -1,20 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { BusinessListing } from '../../models/business-listing';
+import { businessListing } from '../../testing/listing-fixtures';
 import { BusinessListingsGrid } from './business-listings-grid';
 
-function listing(id: string, title: string): BusinessListing {
-  return {
+function listing(id: string, title: string) {
+  return businessListing({
     id,
     title,
     description: 'Fictional sample used by the grid test.',
     category: 'Retail',
     location: 'Austin, TX',
-    askingPrice: 100_000,
-    annualRevenue: 200_000,
-    cashFlow: 30_000,
-    imageUrl: '/listings/retail.svg',
-    featured: false,
-  };
+  });
 }
 
 describe('BusinessListingsGrid', () => {

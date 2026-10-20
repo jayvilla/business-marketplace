@@ -59,5 +59,8 @@ describe('Header', () => {
     await fixture.whenStable();
 
     expect(button.getAttribute('aria-expanded')).toBe('false');
+    // Escape closed a disclosure the keyboard opened. Focus goes back to
+    // the button that owns it, instead of disappearing into the document.
+    expect(document.activeElement).toBe(button);
   });
 });

@@ -6,11 +6,19 @@
   >
     Previous page
   </button>
-  @if (pending()) {
-    <p>Loading page {{ page() }}</p>
-  } @else {
-    <p>Page {{ page() }} of {{ pageCount() }}</p>
-  }
+  <!--
+    One element, so the live region survives the text change. Replacing
+    the node on each page would give assistive tech a new region whose
+    first text is often not announced. `polite` waits until the user
+    pauses. This text changes on a page click, not on each search keystroke.
+  -->
+  <p aria-live="polite" aria-atomic="true">
+    @if (pending()) {
+      Loading page {{ page() }}
+    } @else {
+      Page {{ page() }} of {{ pageCount() }}
+    }
+  </p>
   <button
     type="button"
     (click)="go(page() + 1)"

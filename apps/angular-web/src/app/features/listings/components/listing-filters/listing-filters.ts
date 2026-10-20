@@ -47,7 +47,12 @@ export class ListingFiltersForm {
   protected readonly sorts = LISTING_SORTS;
   protected readonly categoryLabel = listingCategoryLabel;
   protected readonly maxSearchLength = LISTING_MAX_SEARCH_LENGTH;
-  protected readonly fieldError = signal<string | null>(null);
+  /**
+   * One message, and which controls it belongs to. A price problem is not
+   * a search problem. Putting `aria-describedby` on every field would make
+   * a screen reader announce the price error when the user focuses Search.
+   */
+  protected readonly fieldError = signal<FilterFieldError | null>(null);
   protected readonly filtersActive = signal(false);
 
   protected readonly form = new FormGroup({
@@ -126,6 +131,14 @@ export class ListingFiltersForm {
     this.publish();
   }
 
+  protected invalid(target: FilterErrorTarget): 'true' | null {
+    return this.fieldError()?.target === target ? 'true' : null;
+  }
+
+  protected describedBy(target: FilterErrorTarget): string | null {
+    return this.fieldError()?.target === target ? 'listing-filter-error' : null;
+  }
+
   protected sortLabel(sort: ListingSort): string {
     switch (sort) {
       case 'newest':
@@ -152,20 +165,27 @@ export class ListingFiltersForm {
     const raw = this.form.getRawValue();
     const search = raw.search.trim();
     if (search.length > LISTING_MAX_SEARCH_LENGTH) {
-      this.fieldError.set(
-        `Search must be ${LISTING_MAX_SEARCH_LENGTH} characters or fewer.`,
-      );
+      this.fieldError.set({
+        target: 'search',
+        message: `Search must be ${LISTING_MAX_SEARCH_LENGTH} characters or fewer.`,
+      });
       return null;
     }
 
     const minPrice = readPrice(raw.minPrice);
     const maxPrice = readPrice(raw.maxPrice);
     if (minPrice === undefined || maxPrice === undefined) {
-      this.fieldError.set('Enter a price as a number zero or greater.');
+      this.fieldError.set({
+        target: 'price',
+        message: 'Enter a price as a number zero or greater.',
+      });
       return null;
     }
     if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
-      this.fieldError.set('Minimum price cannot be greater than the maximum.');
+      this.fieldError.set({
+        target: 'price',
+        message: 'Minimum price cannot be greater than the maximum.',
+      });
       return null;
     }
 
@@ -187,6 +207,13 @@ export class ListingFiltersForm {
         raw.maxPrice.trim() !== '',
     );
   }
+}
+
+type FilterErrorTarget = 'search' | 'price';
+
+interface FilterFieldError {
+  readonly target: FilterErrorTarget;
+  readonly message: string;
 }
 
 /** `null` is an empty field. `undefined` is text that is not a price. */

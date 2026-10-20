@@ -19,6 +19,9 @@ describe('ListingPagination', () => {
     expect(buttons[0]?.disabled).toBe(true);
     expect(buttons[1]?.disabled).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Page 1 of 2');
+    const status = fixture.nativeElement.querySelector('p');
+    expect(status?.getAttribute('aria-live')).toBe('polite');
+    expect(buttons.every((button) => button.type === 'button')).toBe(true);
 
     buttons[1]?.click();
     expect(pages).toEqual([2]);

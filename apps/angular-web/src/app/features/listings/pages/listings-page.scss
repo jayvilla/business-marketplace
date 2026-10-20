@@ -41,6 +41,9 @@
   margin-top: 0;
   font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
+  /* The header is sticky. Focusing this heading scrolls it under that bar
+     unless the scroll position stops short of the header's height. */
+  scroll-margin-top: var(--space-7);
 }
 
 .count,

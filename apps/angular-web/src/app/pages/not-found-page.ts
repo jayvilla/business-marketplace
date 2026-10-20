@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 
 /**
@@ -20,4 +21,10 @@ import { RouterLink } from '@angular/router';
   styleUrl: './not-found-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotFoundPage {}
+export class NotFoundPage {
+  constructor() {
+    // The browser tab is the page name before the h1 is read.
+    // The shell stays mounted, so each route sets its own title.
+    inject(Title).setTitle('Page not found');
+  }
+}

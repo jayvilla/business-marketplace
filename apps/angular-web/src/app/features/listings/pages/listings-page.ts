@@ -3,9 +3,12 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -113,6 +116,19 @@ export class ListingsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly retryNonce = signal(0);
+
+  /**
+   * Target for focus after a page change. `tabindex="-1"` lets script
+   * focus it without adding it to the tab order.
+   */
+  private readonly resultsHeading =
+    viewChild<ElementRef<HTMLHeadingElement>>('resultsHeading');
+
+  constructor() {
+    // The shell stays mounted, so the document title belongs to the route
+    // that is showing. The h1 and the tab name stay the same sentence.
+    inject(Title).setTitle('Businesses for Sale');
+  }
 
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -269,6 +285,12 @@ export class ListingsPage {
 
   protected onPageChange(page: number): void {
     this.writeQuery({ ...this.query(), page });
+    // Next or Previous can become disabled on the first or last page.
+    // A disabled button leaves the tab order, and the browser drops focus
+    // onto the document. The results heading is the start of what changed.
+    // Moving there on every page click is the same destination, so the
+    // user does not have to guess whether the button survived.
+    this.resultsHeading()?.nativeElement.focus();
   }
 
   /**

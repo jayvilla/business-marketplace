@@ -14,7 +14,7 @@
     />
 
     <section class="results" aria-labelledby="results-heading">
-      <h2 id="results-heading">Listing results</h2>
+      <h2 id="results-heading" #resultsHeading tabindex="-1">Listing results</h2>
 
       @if (priceError(); as message) {
         <p class="state" role="alert">{{ message }}</p>

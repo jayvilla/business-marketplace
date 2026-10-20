@@ -100,5 +100,6 @@ describe('app routes', () => {
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain(
       'Page not found',
     );
+    expect(document.title).toBe('Page not found');
   });
 });

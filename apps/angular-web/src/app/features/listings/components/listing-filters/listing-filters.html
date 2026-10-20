@@ -1,4 +1,9 @@
-<form class="filters" (submit)="applyNow($event)">
+<!--
+  The heading names the form. The error is associated only with the
+  controls that failed, through `aria-describedby`, so the other fields
+  stay unlabeled by a message that is not about them.
+-->
+<form class="filters" aria-labelledby="search-heading" (submit)="applyNow($event)">
   <h2 id="search-heading">Search and filters</h2>
 
   <div class="field">
@@ -8,8 +13,8 @@
       type="search"
       [formControl]="form.controls.search"
       [attr.maxlength]="maxSearchLength"
-      [attr.aria-invalid]="fieldError() ? 'true' : null"
-      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      [attr.aria-invalid]="invalid('search')"
+      [attr.aria-describedby]="describedBy('search')"
       autocomplete="off"
     />
   </div>
@@ -31,8 +36,8 @@
       type="text"
       inputmode="decimal"
       [formControl]="form.controls.minPrice"
-      [attr.aria-invalid]="fieldError() ? 'true' : null"
-      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      [attr.aria-invalid]="invalid('price')"
+      [attr.aria-describedby]="describedBy('price')"
       autocomplete="off"
     />
   </div>
@@ -44,8 +49,8 @@
       type="text"
       inputmode="decimal"
       [formControl]="form.controls.maxPrice"
-      [attr.aria-invalid]="fieldError() ? 'true' : null"
-      [attr.aria-describedby]="fieldError() ? 'listing-filter-error' : null"
+      [attr.aria-invalid]="invalid('price')"
+      [attr.aria-describedby]="describedBy('price')"
       autocomplete="off"
     />
   </div>
@@ -59,8 +64,8 @@
     </select>
   </div>
 
-  @if (fieldError(); as message) {
-    <p id="listing-filter-error" class="error" role="alert">{{ message }}</p>
+  @if (fieldError(); as error) {
+    <p id="listing-filter-error" class="error" role="alert">{{ error.message }}</p>
   }
 
   <div class="actions">
