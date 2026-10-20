@@ -135,4 +135,22 @@ describe('BusinessListingsService', () => {
     expect(failed).toBe(true);
     expect(received).toBe(false);
   });
+
+  it('rejects a 200 that is not a page instead of treating it as no listings', () => {
+    let failed = false;
+    let received = false;
+    service.getListings(defaultListingQuery).subscribe({
+      next: () => {
+        received = true;
+      },
+      error: () => {
+        failed = true;
+      },
+    });
+
+    http.expectOne((candidate) => candidate.url === listingsUrl).flush({ items: null });
+
+    expect(failed).toBe(true);
+    expect(received).toBe(false);
+  });
 });

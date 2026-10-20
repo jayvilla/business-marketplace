@@ -37,7 +37,71 @@
 }
 
 .skeleton-line.short {
-  width: 40%;
+  width: 28%;
+  height: 0.625rem;
+}
+
+.skeleton-line.title {
+  width: 70%;
+  height: 1.125rem;
+}
+
+.skeleton-figure {
+  height: 0.875rem;
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-muted) 0%,
+    var(--color-surface) 50%,
+    var(--color-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-media,
+.skeleton-line {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-muted) 0%,
+    var(--color-surface) 50%,
+    var(--color-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-figure {
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.is-updating {
+  opacity: 0.55;
+}
+
+.updating {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-media,
+  .skeleton-line,
+  .skeleton-figure {
+    animation: none;
+    background: var(--color-surface-muted);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .state {

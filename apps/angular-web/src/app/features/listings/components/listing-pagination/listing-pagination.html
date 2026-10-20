@@ -2,17 +2,19 @@
   <button
     type="button"
     (click)="go(previousTarget())"
-    [disabled]="page() <= 1"
+    [disabled]="pending() || page() <= 1"
   >
     Previous page
   </button>
-  <p>
-    Page {{ page() }} of {{ pageCount() }}
-  </p>
+  @if (pending()) {
+    <p>Loading page {{ page() }}</p>
+  } @else {
+    <p>Page {{ page() }} of {{ pageCount() }}</p>
+  }
   <button
     type="button"
     (click)="go(page() + 1)"
-    [disabled]="page() >= pageCount()"
+    [disabled]="pending() || page() >= pageCount()"
   >
     Next page
   </button>

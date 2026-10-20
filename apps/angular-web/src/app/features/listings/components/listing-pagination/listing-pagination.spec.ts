@@ -47,4 +47,25 @@ describe('ListingPagination', () => {
     previous.click();
     expect(pages).toEqual([2]);
   });
+
+  it('disables both buttons and withholds the old total while a page is loading', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ListingPagination],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(ListingPagination);
+    const pages: number[] = [];
+    fixture.componentInstance.pageChange.subscribe((page) => pages.push(page));
+    fixture.componentRef.setInput('page', 2);
+    fixture.componentRef.setInput('pageSize', 6);
+    fixture.componentRef.setInput('totalCount', 8);
+    fixture.componentRef.setInput('pending', true);
+    await fixture.whenStable();
+
+    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Loading page 2');
+    expect(fixture.nativeElement.textContent).not.toContain('Page 2 of 2');
+    buttons[1]?.click();
+    expect(pages).toEqual([]);
+  });
 });

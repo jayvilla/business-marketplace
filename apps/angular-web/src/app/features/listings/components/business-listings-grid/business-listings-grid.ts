@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { LISTING_PAGE_SIZE } from '../../models/listing-query';
 import { BusinessListing } from '../../models/business-listing';
 import { BusinessListingCard } from '../business-listing-card/business-listing-card';
 
@@ -12,8 +13,12 @@ import { BusinessListingCard } from '../business-listing-card/business-listing-c
  *
  * Empty is not its own status. It is `ready` with no rows. A separate
  * `empty` status could disagree with an array that still has items.
+ *
+ * `updating` is the in-flight query after a page is already on screen.
+ * The rows are the previous response. The template marks them stale so
+ * they are not announced as the new result.
  */
-export type ListingsGridStatus = 'loading' | 'ready' | 'error';
+export type ListingsGridStatus = 'loading' | 'updating' | 'ready' | 'error';
 
 @Component({
   selector: 'app-business-listings-grid',
@@ -27,13 +32,19 @@ export class BusinessListingsGrid {
   readonly status = input<ListingsGridStatus>('ready');
   readonly errorMessage = input('Sample listings could not be loaded.');
   readonly emptyMessage = input('No businesses are listed yet.');
-  /** True while a newer request is in flight and the previous rows stay visible. */
-  readonly busy = input(false);
+  /** True when the empty catalog is the result of the current filters. */
+  readonly showClear = input(false);
   readonly retry = output<void>();
+  readonly clearFilters = output<void>();
 
   /**
-   * Fixed slots, not `Array.from` in the template. A function call in a
-   * template runs on every check. This array is created once.
+   * One placeholder per row the API returns by default. Fewer skeletons
+   * than cards makes the grid jump when the response arrives. The slots
+   * are a constant so the template does not allocate an array on every
+   * check.
    */
-  protected readonly skeletonSlots = [1, 2, 3, 4] as const;
+  protected readonly skeletonSlots = Array.from(
+    { length: LISTING_PAGE_SIZE },
+    (_, index) => index + 1,
+  );
 }

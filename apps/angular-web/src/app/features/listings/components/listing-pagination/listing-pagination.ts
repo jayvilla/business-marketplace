@@ -25,6 +25,12 @@ export class ListingPagination {
   readonly page = input.required<number>();
   readonly pageSize = input.required<number>();
   readonly totalCount = input.required<number>();
+  /**
+   * True while the page this control describes has not come back yet.
+   * The buttons stay disabled so a second click cannot start another GET
+   * for a total that is still the previous query's.
+   */
+  readonly pending = input(false);
   readonly pageChange = output<number>();
 
   protected readonly pageCount = computed(() =>
@@ -36,6 +42,9 @@ export class ListingPagination {
   );
 
   protected go(page: number): void {
+    if (this.pending()) {
+      return;
+    }
     this.pageChange.emit(page);
   }
 }

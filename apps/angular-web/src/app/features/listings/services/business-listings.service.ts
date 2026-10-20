@@ -39,18 +39,39 @@ export class BusinessListingsService {
 
   getListings(query: ListingQuery): Observable<BusinessListingPage> {
     return this.http
-      .get<BusinessListingPageResponse>(`${this.apiBaseUrl}/api/listings`, {
+      .get<unknown>(`${this.apiBaseUrl}/api/listings`, {
         params: toHttpParams(query),
       })
       .pipe(
-        map((response) => ({
-          items: response.items.map(toBusinessListing),
-          page: response.page,
-          pageSize: response.pageSize,
-          totalCount: response.totalCount,
-        })),
+        map((response) => {
+          // HttpClient's generic does not check the JSON. A 200 that is
+          // not a page must fail the request. Mapping a missing `items`
+          // array to [] would look like an empty catalog.
+          if (!isListingPage(response)) {
+            throw new Error('Listing response was not a page.');
+          }
+          return {
+            items: response.items.map(toBusinessListing),
+            page: response.page,
+            pageSize: response.pageSize,
+            totalCount: response.totalCount,
+          };
+        }),
       );
   }
+}
+
+function isListingPage(response: unknown): response is BusinessListingPageResponse {
+  if (response === null || typeof response !== 'object') {
+    return false;
+  }
+  const page = response as BusinessListingPageResponse;
+  return (
+    Array.isArray(page.items) &&
+    typeof page.page === 'number' &&
+    typeof page.pageSize === 'number' &&
+    typeof page.totalCount === 'number'
+  );
 }
 
 function toHttpParams(query: ListingQuery): HttpParams {

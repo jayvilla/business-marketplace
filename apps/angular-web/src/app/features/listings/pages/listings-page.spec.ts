@@ -213,7 +213,7 @@ describe('ListingsPage', () => {
     await harness.fixture.whenStable();
 
     const text = harness.routeNativeElement?.textContent ?? '';
-    expect(text).toContain('Listings could not be loaded.');
+    expect(text).toContain('The listings service had a problem.');
     expect(text).not.toContain('No businesses match these filters.');
 
     const retry = [...(harness.routeNativeElement?.querySelectorAll('button') ?? [])].find(
@@ -239,5 +239,69 @@ describe('ListingsPage', () => {
     const text = harness.routeNativeElement?.textContent ?? '';
     expect(text).toContain('No businesses match these filters.');
     expect(text).not.toContain('Listings could not be loaded.');
+    const clear = [...(harness.routeNativeElement?.querySelectorAll('.state button') ?? [])].find(
+      (button) => button.textContent?.includes('Clear filters'),
+    ) as HTMLButtonElement;
+    clear.click();
+    const cleared = await nextRequest(
+      http,
+      (candidate) => !candidate.params.has('search'),
+    );
+    cleared.flush(envelope(['King Street Bakery'], 8));
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toBe('/listings');
+    expect(harness.routeNativeElement?.textContent).toContain('King Street Bakery');
+  });
+
+  it('shows the catalog empty state when a successful response has no rows and no filters', async () => {
+    const pending = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).flush(envelope([], 0));
+    await pending;
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('No businesses are listed yet.');
+    expect(text).not.toContain('No businesses match these filters.');
+    expect(harness.routeNativeElement?.querySelector('.state button')).toBeNull();
+  });
+
+  it('keeps the previous cards marked stale while the next page is loading', async () => {
+    const pending = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).flush(envelope(['King Street Bakery'], 8));
+    await pending;
+    await harness.fixture.whenStable();
+
+    const next = [...(harness.routeNativeElement?.querySelectorAll('button') ?? [])].find(
+      (button) => button.textContent?.includes('Next page'),
+    ) as HTMLButtonElement;
+    next.click();
+    const request = await nextRequest(
+      http,
+      (candidate) => candidate.params.get('page') === '2',
+    );
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Updating listings.');
+    expect(text).toContain('King Street Bakery');
+    expect(text).not.toContain('Northline Software');
+    expect(text).toContain('Loading page 2');
+    expect(text).not.toContain('8 listings');
+    const buttons = [...(harness.routeNativeElement?.querySelectorAll('nav button') ?? [])] as HTMLButtonElement[];
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+    request.flush(envelope(['Northline Software'], 8, 2));
+  });
+
+  it('describes a network failure and does not turn it into an empty catalog', async () => {
+    const pending = harness.navigateByUrl('/listings');
+    (await nextRequest(http)).error(new ProgressEvent('error'));
+    await pending;
+    await harness.fixture.whenStable();
+
+    const text = harness.routeNativeElement?.textContent ?? '';
+    expect(text).toContain('Check your connection');
+    expect(text).not.toContain('No businesses are listed yet.');
+    expect(harness.routeNativeElement?.querySelector('[role="alert"]')).not.toBeNull();
   });
 });

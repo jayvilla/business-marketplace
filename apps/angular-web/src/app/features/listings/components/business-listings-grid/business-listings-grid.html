@@ -1,8 +1,11 @@
 @if (status() === 'loading') {
   <!--
+    The blocks match the card's media and text rows, so the list does not
+    jump when listings arrive. A stable outline makes the wait feel shorter
+    than a blank region of a different height.
     The skeleton is visual only. `role="status"` is the text a screen reader
-    hears. `aria-hidden` on the blocks keeps the decorative bars out of that
-    announcement. There is no native element for a loading placeholder.
+    hears, once. `aria-hidden` keeps the decorative blocks out of that
+    announcement. A pulsing block is not a native element.
   -->
   <p class="visually-hidden" role="status">Loading listings.</p>
   <div class="grid" aria-hidden="true">
@@ -11,8 +14,13 @@
         <div class="skeleton-media"></div>
         <div class="skeleton-body">
           <div class="skeleton-line short"></div>
+          <div class="skeleton-line title"></div>
           <div class="skeleton-line"></div>
           <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-figure"></div>
+          <div class="skeleton-figure"></div>
+          <div class="skeleton-figure"></div>
         </div>
       </div>
     }
@@ -22,8 +30,26 @@
     <p>{{ errorMessage() }}</p>
     <button type="button" (click)="retry.emit()">Try again</button>
   </div>
+} @else if (status() === 'updating') {
+  <!--
+    One polite status for the in-flight query. The cards underneath are
+    `aria-busy`, so they are not a second announcement of the old total.
+  -->
+  <p class="updating" role="status">Updating listings.</p>
+  <ul class="grid is-updating" aria-busy="true">
+    @for (listing of listings(); track listing.id) {
+      <li>
+        <app-business-listing-card [listing]="listing" />
+      </li>
+    }
+  </ul>
 } @else if (listings().length === 0) {
-  <p class="state">{{ emptyMessage() }}</p>
+  <div class="state">
+    <p>{{ emptyMessage() }}</p>
+    @if (showClear()) {
+      <button type="button" (click)="clearFilters.emit()">Clear filters</button>
+    }
+  </div>
 } @else {
   <!--
     `track listing.id` is the item's identity. Tracking the loop index
@@ -31,10 +57,7 @@
     attach one listing's image element to a different business.
     The id stays on the same card, and the browser keeps that image.
   -->
-  @if (busy()) {
-    <p class="visually-hidden" role="status">Updating listings.</p>
-  }
-  <ul class="grid" [attr.aria-busy]="busy() ? 'true' : null">
+  <ul class="grid">
     @for (listing of listings(); track listing.id) {
       <li>
         <app-business-listing-card [listing]="listing" />

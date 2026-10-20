@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -20,6 +19,10 @@ import {
   switchMap,
 } from 'rxjs';
 import {
+  listingsErrorLog,
+  listingsErrorMessage,
+} from '../api/listings-error-message';
+import {
   BusinessListingsGrid,
   ListingsGridStatus,
 } from '../components/business-listings-grid/business-listings-grid';
@@ -40,25 +43,35 @@ import {
   BusinessListingsService,
 } from '../services/business-listings.service';
 
-interface ListingsViewState {
-  readonly status: ListingsGridStatus | 'invalid';
-  readonly page: BusinessListingPage | null;
-  readonly errorMessage: string;
-  readonly busy: boolean;
-}
+/**
+ * One screen, one of these. A boolean for loading plus a boolean for error
+ * can both be true. This union cannot. Empty is `ready` with no rows, so
+ * it cannot also be an error.
+ *
+ * `updating` keeps the previous page on screen and marks it stale. The
+ * count for that page is hidden until the new response replaces it.
+ * Showing those cards as the answer for the new query would be a lie.
+ * Replacing them with skeletons on every keystroke is the flicker this
+ * avoids.
+ *
+ * A new screen state is one more arm of this union. Call sites that
+ * switch on `kind` fail to compile until they handle it. That is how
+ * the screen can grow without a second set of booleans or a state library.
+ */
+type ListingsViewState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'updating'; readonly previous: BusinessListingPage }
+  | { readonly kind: 'ready'; readonly page: BusinessListingPage }
+  | { readonly kind: 'error'; readonly message: string }
+  | { readonly kind: 'invalid' };
 
 type RequestEvent =
   | { readonly type: 'loading' }
   | { readonly type: 'ready'; readonly page: BusinessListingPage }
-  | { readonly type: 'error' }
+  | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'blocked' };
 
-const initialView: ListingsViewState = {
-  status: 'loading',
-  page: null,
-  errorMessage: '',
-  busy: false,
-};
+const initialView: ListingsViewState = { kind: 'loading' };
 
 /**
  * Listings route. The address bar is the query.
@@ -80,6 +93,13 @@ const initialView: ListingsViewState = {
  *
  * `distinctUntilChanged` is what stops a URL rewrite that did not change
  * the query from starting that request again.
+ *
+ * `catchError` turns a failed response into an error state and completes
+ * normally. Without it the outer stream would die on the first 500, and
+ * Retry would have nothing left to subscribe to. RxJS `retry()` would
+ * resubscribe by itself and hide that failure. The button below is the
+ * retry: it bumps a nonce, `switchMap` starts one new GET, and a second
+ * click while that GET is open is ignored.
  */
 @Component({
   selector: 'app-listings-page',
@@ -149,25 +169,60 @@ export class ListingsPage {
     { initialValue: initialView },
   );
 
-  readonly status = computed(() => {
-    const status = this.requestState().status;
-    return status === 'invalid' ? 'ready' : status;
+  /** What the grid draws. `invalid` never reaches it; the price alert does. */
+  readonly gridStatus = computed((): ListingsGridStatus => {
+    const state = this.requestState();
+    if (state.kind === 'updating') {
+      return 'updating';
+    }
+    if (state.kind === 'ready') {
+      return 'ready';
+    }
+    if (state.kind === 'error') {
+      return 'error';
+    }
+    return 'loading';
   });
 
-  readonly listings = computed(
-    (): readonly BusinessListing[] => this.requestState().page?.items ?? [],
+  readonly listings = computed((): readonly BusinessListing[] => {
+    const state = this.requestState();
+    if (state.kind === 'ready') {
+      return state.page.items;
+    }
+    if (state.kind === 'updating') {
+      return state.previous.items;
+    }
+    return [];
+  });
+
+  readonly errorMessage = computed(() => {
+    const state = this.requestState();
+    return state.kind === 'error' ? state.message : '';
+  });
+
+  readonly totalCount = computed(() => {
+    const page = visiblePage(this.requestState());
+    return page?.totalCount ?? 0;
+  });
+
+  /** The confirmed total. Hidden while a newer query is still in flight. */
+  readonly showCount = computed(
+    () => this.requestState().kind === 'ready' && this.totalCount() > 0,
   );
 
-  readonly errorMessage = computed(() => this.requestState().errorMessage);
-  readonly busy = computed(() => this.requestState().busy);
-
-  readonly totalCount = computed(
-    () => this.requestState().page?.totalCount ?? 0,
-  );
+  readonly filtersActive = computed(() => {
+    const query = this.query();
+    return (
+      query.search !== '' ||
+      query.category !== null ||
+      query.minPrice !== null ||
+      query.maxPrice !== null
+    );
+  });
 
   readonly emptyMessage = computed(() => {
-    const page = this.requestState().page;
-    const query = this.query();
+    const state = this.requestState();
+    const page = state.kind === 'ready' ? state.page : null;
     if (
       page &&
       page.totalCount > 0 &&
@@ -175,25 +230,34 @@ export class ListingsPage {
     ) {
       return 'This page is outside the results.';
     }
-    if (
-      query.search !== '' ||
-      query.category !== null ||
-      query.minPrice !== null ||
-      query.maxPrice !== null
-    ) {
+    if (this.filtersActive()) {
       return 'No businesses match these filters.';
     }
     return 'No businesses are listed yet.';
   });
 
+  readonly showClearFilters = computed(
+    () =>
+      this.requestState().kind === 'ready' &&
+      this.listings().length === 0 &&
+      this.filtersActive(),
+  );
+
   readonly showPagination = computed(() => {
-    const page = this.requestState().page;
-    if (page === null || this.priceError() !== null) {
+    if (this.priceError() !== null) {
+      return false;
+    }
+    const page = visiblePage(this.requestState());
+    if (page === null) {
       return false;
     }
     const pages = listingPageCount(page.totalCount, page.pageSize);
-    return pages > 1 || page.page > 1;
+    return pages > 1 || this.query().page > 1;
   });
+
+  readonly paginationPending = computed(
+    () => this.requestState().kind === 'updating',
+  );
 
   protected onFiltersChange(filters: ListingFilters): void {
     this.writeQuery({
@@ -207,8 +271,34 @@ export class ListingsPage {
     this.writeQuery({ ...this.query(), page });
   }
 
+  /**
+   * Same URL, one more GET. Filters and page stay where they are because
+   * the nonce is the only thing that changed. A click during `loading` or
+   * `updating` would start a second subscription to the same query, so it
+   * is ignored. `switchMap` would cancel the first, which is still a
+   * duplicate round trip.
+   */
   protected retry(): void {
+    const kind = this.requestState().kind;
+    if (kind === 'loading' || kind === 'updating') {
+      return;
+    }
     this.retryNonce.update((nonce) => nonce + 1);
+  }
+
+  /**
+   * The empty-state button and the form's Clear filters write the same
+   * query. The address bar remains the only copy. Sort stays, because
+   * clear means "remove the filters," and the form does the same.
+   */
+  protected clearResultFilters(): void {
+    this.onFiltersChange({
+      search: '',
+      category: null,
+      minPrice: null,
+      maxPrice: null,
+      sort: this.query().sort,
+    });
   }
 
   private writeQuery(query: ListingQuery): void {
@@ -229,8 +319,8 @@ export class ListingsPage {
     return this.listingsService.getListings(query).pipe(
       map((page): RequestEvent => ({ type: 'ready', page })),
       catchError((error: unknown): Observable<RequestEvent> => {
-        console.error(error instanceof HttpErrorResponse ? error.message : error);
-        return of({ type: 'error' });
+        console.error(listingsErrorLog(error));
+        return of({ type: 'error', message: listingsErrorMessage(error) });
       }),
       // Inside switchMap, so this loading event belongs to the latest
       // query only. The previous request has already been unsubscribed.
@@ -241,23 +331,30 @@ export class ListingsPage {
 
 function reduceView(state: ListingsViewState, event: RequestEvent): ListingsViewState {
   if (event.type === 'blocked') {
-    return { ...state, status: 'invalid', busy: false, errorMessage: '' };
+    return { kind: 'invalid' };
   }
   if (event.type === 'loading') {
-    if (state.page === null) {
-      return { status: 'loading', page: null, errorMessage: '', busy: false };
-    }
-    // Keep the rows already on screen. Replacing them with skeletons on
-    // every keystroke is the flicker this avoids. `busy` is the announcement.
-    return { ...state, status: 'ready', busy: true, errorMessage: '' };
+    const previous = visiblePage(state);
+    // Every query starts here. That event is what clears an error and
+    // replaces a ready page. The previous rows survive only as `updating`,
+    // and the next ready or error event discards them. A failed request
+    // has nothing honest to keep on screen, so Retry shows skeletons.
+    return previous === null
+      ? { kind: 'loading' }
+      : { kind: 'updating', previous };
   }
   if (event.type === 'error') {
-    return {
-      status: 'error',
-      page: null,
-      errorMessage: 'Listings could not be loaded.',
-      busy: false,
-    };
+    return { kind: 'error', message: event.message };
   }
-  return { status: 'ready', page: event.page, errorMessage: '', busy: false };
+  return { kind: 'ready', page: event.page };
+}
+
+function visiblePage(state: ListingsViewState): BusinessListingPage | null {
+  if (state.kind === 'ready') {
+    return state.page;
+  }
+  if (state.kind === 'updating') {
+    return state.previous;
+  }
+  return null;
 }

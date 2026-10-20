@@ -19,7 +19,7 @@
       @if (priceError(); as message) {
         <p class="state" role="alert">{{ message }}</p>
       } @else {
-        @if (status() === 'ready' && totalCount() > 0) {
+        @if (showCount()) {
           <p class="count" role="status">
             @if (totalCount() === 1) {
               1 listing
@@ -30,17 +30,19 @@
         }
         <app-business-listings-grid
           [listings]="listings()"
-          [status]="status()"
+          [status]="gridStatus()"
           [errorMessage]="errorMessage()"
           [emptyMessage]="emptyMessage()"
-          [busy]="busy()"
+          [showClear]="showClearFilters()"
           (retry)="retry()"
+          (clearFilters)="clearResultFilters()"
         />
         @if (showPagination()) {
           <app-listing-pagination
             [page]="query().page"
             [pageSize]="query().pageSize"
             [totalCount]="totalCount()"
+            [pending]="paginationPending()"
             (pageChange)="onPageChange($event)"
           />
         }
