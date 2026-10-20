@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace BusinessMarketplace.Api.Tests;
 
@@ -59,6 +60,73 @@ public class ErrorHandlingTests
         Assert.DoesNotContain("ThrowingListingService", body, StringComparison.Ordinal);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
+
+    [Fact]
+    public async Task UnexpectedException_IsLoggedWithTheTraceAndStaysOutOfTheBody()
+    {
+        var logs = new LogCapture();
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment(Environments.Development);
+            builder.UseSetting(
+                "ConnectionStrings:DefaultConnection",
+                "Host=127.0.0.1;Port=5432;Database=business_marketplace;Username=postgres;Password=postgres");
+            builder.UseSetting("FrontendCors:Origins:0", "http://localhost:4200");
+            builder.ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddProvider(logs);
+                logging.SetMinimumLevel(LogLevel.Information);
+            });
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddScoped<IBusinessListingService, ThrowingListingService>();
+            });
+        });
+
+        var response = await factory.CreateClient().GetAsync("/api/listings");
+        var body = await response.Content.ReadAsStringAsync();
+        var problem = JsonSerializer.Deserialize<ProblemDetails>(body, JsonSerializerOptions.Web);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.DoesNotContain("super-secret", body, StringComparison.Ordinal);
+        var error = Assert.Single(logs.Entries, entry => entry.Level == LogLevel.Error);
+        Assert.IsType<InvalidOperationException>(error.Exception);
+        Assert.Contains("TraceId", error.Message, StringComparison.Ordinal);
+        var traceId = problem?.Extensions["traceId"]?.ToString();
+        Assert.False(string.IsNullOrWhiteSpace(traceId));
+        Assert.Contains(traceId, error.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class LogCapture : ILoggerProvider
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        public ILogger CreateLogger(string categoryName) => new CaptureLogger(Entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CaptureLogger(List<LogEntry> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+            }
+        }
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
 
     private sealed class ThrowingListingService : IBusinessListingService
     {

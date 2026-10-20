@@ -26,6 +26,27 @@
         "command": "dotnet test apps/api/BusinessMarketplace.slnx",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "test-unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "dotnet test apps/api/BusinessMarketplace.slnx --filter Category!=Integration",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "dotnet test apps/api/BusinessMarketplace.slnx --filter Category=Integration",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test-coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "dotnet test apps/api/BusinessMarketplace.slnx --collect:\"XPlat Code Coverage\" --results-directory apps/api/coverage",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }
