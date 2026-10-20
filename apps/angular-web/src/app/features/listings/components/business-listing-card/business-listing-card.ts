@@ -47,9 +47,9 @@ export class BusinessListingCard {
   });
 
   /**
-   * The API URL until it errors, then a local SVG. Seed rows point at
-   * `images.example`, which does not resolve. The text of the card still
-   * comes from the response.
+   * The API URL until it errors, then a local SVG. Documentation hosts
+   * such as `images.example` are already replaced before they reach this
+   * input. This handler is for a real URL that then fails to load.
    */
   protected readonly imageSource = computed(() => {
     const listing = this.listing();

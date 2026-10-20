@@ -29,8 +29,20 @@ describe('toBusinessListing', () => {
     expect(listing.location).toBe('Portland, OR');
     expect(listing.category).toBe('Professional services');
     expect(listing.askingPrice).toBe(875_000);
-    expect(listing.imageUrl).toBe('https://images.example/elm-street-bistro.jpg');
+    expect(listing.imageUrl).toBe('/listings/services.svg');
     expect(listing.featured).toBe(false);
+  });
+
+  it('keeps a real image URL and does not request a documentation host', () => {
+    const real = toBusinessListing(
+      summary({ imageUrl: 'https://cdn.example.com/elm.jpg', category: 'Retail' }),
+    );
+    const documented = toBusinessListing(
+      summary({ imageUrl: 'https://images.example/elm.jpg', category: 'Restaurant' }),
+    );
+
+    expect(real.imageUrl).toBe('https://cdn.example.com/elm.jpg');
+    expect(documented.imageUrl).toBe('/listings/restaurant.svg');
   });
 
   it('keeps undisclosed money as null and substitutes a local image', () => {
