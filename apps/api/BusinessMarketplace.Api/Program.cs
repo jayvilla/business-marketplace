@@ -135,20 +135,37 @@ if (builder.Environment.IsDevelopment())
 var app = builder.Build();
 
 // Explicit development seed. Startup does not call this, and neither does
-// production. Apply migrations first, then:
+// a request. Apply migrations first, then:
 //   dotnet run --project apps/api/BusinessMarketplace.Api --launch-profile http -- --seed
-if (args.Contains("--seed"))
+//
+// --reset-generated is opt-in and only valid with --seed. It deletes the
+// generated ids and inserts them again. Sample listings and any other row
+// stay. EnsureAllowed refuses every environment except Development before
+// a connection is used.
+var seed = args.Contains("--seed");
+var resetGenerated = args.Contains("--reset-generated");
+if (seed || resetGenerated)
 {
-    if (!app.Environment.IsDevelopment())
-    {
-        throw new InvalidOperationException(
-            $"Refusing to seed the {app.Environment.EnvironmentName} environment.");
-    }
+    DevelopmentListingSeeder.EnsureAllowed(app.Environment.EnvironmentName, resetGenerated, seed);
 
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var inserted = await DevelopmentListingSeeder.SeedAsync(db);
-    app.Logger.LogInformation("Development seed inserted {InsertedCount} listings.", inserted);
+    if (resetGenerated)
+    {
+        var replaced = await DevelopmentListingSeeder.ResetGeneratedAsync(db);
+        app.Logger.LogInformation(
+            "Development seed replaced {ReplacedCount} generated listings. Sample listings were left in place.",
+            replaced);
+    }
+    else
+    {
+        var result = await DevelopmentListingSeeder.SeedAsync(db);
+        app.Logger.LogInformation(
+            "Development seed inserted {SampleInserted} sample listings and {GeneratedInserted} generated listings.",
+            result.SampleInserted,
+            result.GeneratedInserted);
+    }
+
     return;
 }
 

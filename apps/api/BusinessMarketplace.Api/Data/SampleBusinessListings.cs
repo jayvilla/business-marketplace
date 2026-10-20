@@ -3,12 +3,15 @@ using BusinessMarketplace.Api.Models;
 namespace BusinessMarketplace.Api.Data;
 
 /// <summary>
-/// Fictional listings inserted by the development seed command. Names,
-/// places, and figures are invented.
+/// Eleven fictional listings inserted by the development seed command.
+/// Names, places, and figures are invented.
 ///
 /// The API does not read this array at request time. PostgreSQL does.
 /// The array is the source the seeder copies, once, into rows whose ids
-/// match these values.
+/// match these values. <see cref="BusinessListingSeedGenerator"/> is the
+/// separate 500-row catalog. These 11 stay so the documented examples and
+/// the HTTP test double keep stable ids. A reset of the generated catalog
+/// does not delete them.
 ///
 /// Ids and timestamps are fixed so a test can ask for the same listing
 /// twice and get the same identity. The type does not call Guid.NewGuid

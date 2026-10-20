@@ -47,6 +47,13 @@
         "command": "dotnet test apps/api/BusinessMarketplace.slnx --collect:\"XPlat Code Coverage\" --results-directory apps/api/coverage",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "dotnet run --project apps/api/BusinessMarketplace.Api/BusinessMarketplace.Api.csproj --launch-profile http -- --seed",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }
