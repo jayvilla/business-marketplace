@@ -1,6 +1,6 @@
 # Business Marketplace — Full-Stack Engineering Practice
 
-An independent educational project for browsing fictional businesses for sale. It is inspired by business-for-sale marketplaces. It is not an official CoStar Group or BizBuySell product.
+An independent educational project for browsing fictional businesses for sale. It is inspired by business-for-sale marketplaces.
 
 The Angular application is the working client. It searches, filters, sorts, and pages listings served by an ASP.NET Core API. The API persists those listings in PostgreSQL with Entity Framework Core. A Vue application is in the same Nx workspace as a starter and does not call the API yet.
 
