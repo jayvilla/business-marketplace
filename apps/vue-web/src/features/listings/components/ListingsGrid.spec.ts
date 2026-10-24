@@ -140,6 +140,20 @@ describe('ListingsGrid', () => {
     expect(wrapper.text()).toContain('Harbor & Rye');
     expect(wrapper.get('ul').attributes('aria-busy')).toBe('true');
     expect(wrapper.findAll('.skeleton')).toHaveLength(0);
+    expect(wrapper.get('.updating').attributes('role')).toBe('status');
+  });
+
+  it('keeps the updating text visible without a second live region', () => {
+    const wrapper = mount(ListingsGrid, {
+      props: {
+        status: 'updating',
+        listings: [listing('lst-a', 'Harbor & Rye')],
+        announceUpdate: false,
+      },
+    });
+
+    expect(wrapper.get('.updating').text()).toContain('Updating listings.');
+    expect(wrapper.get('.updating').attributes('role')).toBeUndefined();
   });
 
   it('offers clear filters only when the empty state asks for it', async () => {

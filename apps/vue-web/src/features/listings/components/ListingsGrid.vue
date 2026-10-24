@@ -27,6 +27,12 @@ const props = withDefaults(
     errorMessage?: string;
     emptyMessage?: string;
     showClear?: boolean;
+    /**
+     * The pager already says "Loading page N" while a page change is
+     * open. A second polite region would announce the same moment twice.
+     * Filter changes on a single page have no pager, so they still announce.
+     */
+    announceUpdate?: boolean;
   }>(),
   {
     listings: () => [],
@@ -34,6 +40,7 @@ const props = withDefaults(
     errorMessage: 'Sample listings could not be loaded.',
     emptyMessage: 'No businesses are listed yet.',
     showClear: false,
+    announceUpdate: true,
   },
 );
 
@@ -105,7 +112,9 @@ function retryListenerAttached(): boolean {
   </div>
 
   <div v-else-if="props.status === 'updating'">
-    <p class="updating" role="status">Updating listings.</p>
+    <p class="updating" :role="props.announceUpdate ? 'status' : undefined">
+      Updating listings.
+    </p>
     <ul class="grid is-updating" aria-busy="true">
       <li v-for="listing in props.listings" :key="listing.id">
         <ListingCard :listing="listing" />

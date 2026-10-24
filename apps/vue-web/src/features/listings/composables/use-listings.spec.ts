@@ -258,4 +258,25 @@ describe('useListings', () => {
     expect(api.status.value).toBe('blocked');
     wrapper.unmount();
   });
+
+  it('loads again when a blocked range becomes a valid query', async () => {
+    getListings.mockResolvedValue(page('Harbor & Rye'));
+    const source = ref<ListingsRequest>({
+      query: { ...defaultListingQuery, minPrice: 10, maxPrice: 1 },
+      blocked: true,
+    });
+    const { api, wrapper } = mountListings(source);
+    await flushPromises();
+
+    expect(getListings).not.toHaveBeenCalled();
+    expect(api.status.value).toBe('blocked');
+
+    source.value = { query: defaultListingQuery, blocked: false };
+    await flushPromises();
+
+    expect(getListings).toHaveBeenCalledTimes(1);
+    expect(api.status.value).toBe('ready');
+    expect(api.listings.value[0]?.title).toBe('Harbor & Rye');
+    wrapper.unmount();
+  });
 });

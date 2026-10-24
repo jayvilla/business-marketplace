@@ -204,6 +204,7 @@ function commit(next: ListingQuery, mode: 'push' | 'replace'): void {
             :show-clear="
               filtersActive && listings.length === 0 && status === 'ready'
             "
+            :announce-update="!showPagination"
             @retry="retry"
             @clear="onClear"
           />
@@ -250,7 +251,7 @@ function commit(next: ListingQuery, mode: 'push' | 'replace'): void {
    * The header is sticky. Focusing this heading after a page change
    * should stop short of sliding underneath that bar.
    */
-  scroll-margin-top: var(--space-7);
+  scroll-margin-top: var(--sticky-header-offset);
 }
 
 .count,

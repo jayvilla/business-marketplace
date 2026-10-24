@@ -197,7 +197,7 @@ onUnmounted(() => {
   min-height: 2.75rem;
   min-width: 2.75rem;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);

@@ -23,6 +23,18 @@
   --color-text-muted: #3a4553;
   --color-border: #d5dce6;
   --color-border-strong: #b7c2d0;
+  /*
+   * Input and button edges sit on a white surface. #b7c2d0 against white
+   * is about 1.8:1, under the 3:1 WCAG 2.2 AA asks for a control boundary
+   * (1.4.11). #7d8b9a is about 3.5:1. Cards keep the lighter border.
+   */
+  --color-control-border: #7d8b9a;
+  /*
+   * Closed sticky header is about 3.75rem, plus the focus outline.
+   * `scroll-padding-top` uses this so a focused control is not left
+   * entirely underneath that bar (2.4.11).
+   */
+  --sticky-header-offset: 4.5rem;
   --color-primary: #1d4ed8;
   --color-primary-hover: #1e3a8a;
   --color-primary-contrast: #ffffff;

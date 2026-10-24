@@ -271,6 +271,10 @@ describe('ListingsView', () => {
     expect(wrapper.text()).toContain('Harbor & Rye');
     expect(wrapper.get('ul').attributes('aria-busy')).toBe('true');
     expect(wrapper.text()).toContain('Loading page 2');
+    expect(wrapper.get('.updating').attributes('role')).toBeUndefined();
+    expect(wrapper.get('nav[aria-label="Pagination"] p').attributes('aria-live')).toBe(
+      'polite',
+    );
 
     resolveNext(page(['Cedar Bakery'], 8));
     await flushPromises();
@@ -363,6 +367,83 @@ describe('ListingsView', () => {
     await clears[1]?.trigger('click');
     await flushPromises();
     expect(router.currentRoute.value.query).toEqual({});
+    wrapper.unmount();
+  });
+
+  it('shows the search results, then restores the previous page on Back', async () => {
+    getListings.mockImplementation((query: { search: string }) =>
+      Promise.resolve(
+        query.search === 'bakery'
+          ? page(['Cedar Bakery'], 1)
+          : page(['Harbor & Rye'], 1),
+      ),
+    );
+    const { router, wrapper } = await mountView();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    expect(wrapper.text()).toContain('Harbor & Rye');
+    await wrapper.get('#listing-search').setValue('bakery');
+    await vi.advanceTimersByTimeAsync(LISTING_TEXT_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Cedar Bakery');
+    expect(wrapper.text()).not.toContain('Harbor & Rye');
+    expect(getListings.mock.calls.at(-1)?.[0]).toMatchObject({
+      search: 'bakery',
+      page: 1,
+    });
+
+    await router.back();
+    await flushPromises();
+
+    expect(router.currentRoute.value.query['search']).toBeUndefined();
+    expect(
+      (wrapper.get('#listing-search').element as HTMLInputElement).value,
+    ).toBe('');
+    expect(wrapper.text()).toContain('Harbor & Rye');
+    expect(wrapper.text()).not.toContain('Cedar Bakery');
+    wrapper.unmount();
+  });
+
+  it('sends the minimum and maximum price on one request', async () => {
+    getListings.mockResolvedValue(page(['Harbor & Rye'], 1));
+    const { wrapper } = await mountView();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await wrapper.get('#listing-min-price').setValue('100');
+    await wrapper.get('#listing-max-price').setValue('500');
+    await vi.advanceTimersByTimeAsync(LISTING_TEXT_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(getListings).toHaveBeenCalledTimes(2);
+    expect(getListings.mock.calls.at(-1)?.[0]).toMatchObject({
+      minPrice: 100,
+      maxPrice: 500,
+      page: 1,
+    });
+    wrapper.unmount();
+  });
+
+  it('requests listings after an inverted price link is cleared', async () => {
+    getListings.mockResolvedValue(page(['Harbor & Rye'], 1));
+    const { router, wrapper } = await mountView(
+      '/listings?minPrice=10&maxPrice=1',
+    );
+
+    expect(getListings).not.toHaveBeenCalled();
+    await button(wrapper, 'Clear filters').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query).toEqual({});
+    expect(getListings).toHaveBeenCalledTimes(1);
+    expect(getListings.mock.calls[0]?.[0]).toMatchObject({
+      minPrice: null,
+      maxPrice: null,
+    });
+    expect(wrapper.text()).toContain('Harbor & Rye');
+    expect(wrapper.text()).not.toContain(
+      'Minimum price cannot be greater than the maximum.',
+    );
     wrapper.unmount();
   });
 });
