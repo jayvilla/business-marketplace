@@ -37,21 +37,31 @@ type AppRouteRecord = RouteRecordRaw & {
  * Application URL map. The router walks this array and uses the first
  * match, so the catch-all stays last.
  *
- * `/` is the listings screen. One screen does not need a second path.
- * Another path can alias this record later without moving the view.
+ * `/listings` is the listings screen, the same path the Angular client
+ * uses. `/` only redirects there. A second home view would be a page this
+ * application does not have.
  *
  * `/:pathMatch(.*)*` is Vue Router's catch-all. The parameter name is
- * required by the syntax. This screen does not read the value.
+ * required by the syntax. This screen does not read the value. The record
+ * stays last so a real path is never swallowed by it.
  *
- * Both components are dynamic imports. The shell chunk stays free of the
- * listings view and the not-found view. The listings import is the feature
- * boundary: cards, filters, and the API client added later stay in that
- * chunk. The not-found view is a separate chunk because almost no visit
- * renders it.
+ * The listings view and the not-found view are dynamic imports. The shell
+ * chunk stays free of both. The listings import is the feature boundary:
+ * the cards live in that chunk. The not-found view is a separate chunk
+ * because almost no visit renders it. The `/` record is a redirect, so it
+ * has no component of its own.
  */
 export const routes: AppRouteRecord[] = [
   {
     path: '/',
+    name: 'home',
+    redirect: { name: 'listings' },
+    meta: {
+      title: 'Businesses for Sale',
+    },
+  },
+  {
+    path: '/listings',
     name: 'listings',
     component: () => import('../../features/listings/views/ListingsView.vue'),
     meta: {

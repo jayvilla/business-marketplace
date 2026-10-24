@@ -11,7 +11,7 @@ async function mountAt(path: string) {
     global: { plugins: [router] },
   });
   await router.isReady();
-  return wrapper;
+  return { router, wrapper };
 }
 
 describe('routes', () => {
@@ -21,25 +21,40 @@ describe('routes', () => {
     expect(routes.every((route) => route.meta.title.length > 0)).toBe(true);
   });
 
-  it('renders the listings placeholder at / and names the tab', async () => {
-    const wrapper = await mountAt('/');
+  it('redirects / to /listings and marks only the Listings link current', async () => {
+    const { router, wrapper } = await mountAt('/');
 
+    expect(router.currentRoute.value.path).toBe('/listings');
     expect(wrapper.get('h1').text()).toBe('Businesses for Sale');
+    expect(wrapper.text()).toContain('Harbor & Rye');
     const primaryLinks = wrapper.get('header nav').findAll('a');
-    expect(
-      primaryLinks.every((link) => link.attributes('aria-current') === 'page'),
-    ).toBe(true);
+    expect(primaryLinks[0]?.attributes('aria-current')).toBeUndefined();
+    expect(primaryLinks[1]?.text()).toBe('Listings');
+    expect(primaryLinks[1]?.attributes('aria-current')).toBe('page');
+    const footerLinks = wrapper.get('footer nav').findAll('a');
+    expect(footerLinks[0]?.attributes('aria-current')).toBeUndefined();
+    expect(footerLinks[1]?.attributes('aria-current')).toBe('page');
     expect(wrapper.get('a.brand').attributes('aria-current')).toBeUndefined();
     expect(document.title).toBe('Businesses for Sale');
 
     wrapper.unmount();
   });
 
+  it('renders the listings page at /listings', async () => {
+    const { router, wrapper } = await mountAt('/listings');
+
+    expect(router.currentRoute.value.path).toBe('/listings');
+    expect(wrapper.get('main h1').text()).toBe('Businesses for Sale');
+    expect(document.title).toBe('Businesses for Sale');
+
+    wrapper.unmount();
+  });
+
   it('renders the not-found view for an unknown url', async () => {
-    const wrapper = await mountAt('/missing-page');
+    const { wrapper } = await mountAt('/missing-page');
 
     expect(wrapper.get('main h1').text()).toBe('Page not found');
-    expect(wrapper.get('main a').attributes('href')).toBe('/');
+    expect(wrapper.get('main a').attributes('href')).toBe('/listings');
     expect(
       wrapper
         .get('header nav')

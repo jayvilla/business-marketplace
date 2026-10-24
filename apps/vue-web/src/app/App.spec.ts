@@ -33,7 +33,10 @@ describe('App', () => {
     const main = wrapper.get('main#main-content');
     expect(main.attributes('tabindex')).toBe('-1');
     expect(main.get('h1').text()).toBe('Businesses for Sale');
-    expect(main.find('header').exists()).toBe(false);
+    // The page intro is a header inside main. It is not a second banner.
+    // The site header is the only `header.bar`.
+    expect(wrapper.findAll('header.bar')).toHaveLength(1);
+    expect(main.find('header.intro').exists()).toBe(true);
     expect(main.find('footer').exists()).toBe(false);
 
     const footer = wrapper.get('footer');

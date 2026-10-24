@@ -6,16 +6,17 @@
  * two call sites. The labels and the URL are the part that must stay in
  * step.
  *
- * `to` is `/`, this client's listings screen. The Angular client reaches
- * the same screen at `/listings`. Phase 4.1 kept `/` as the Vue route, and
- * this list follows that contract.
+ * Both items go to `/listings`. There is no separate home screen. Angular
+ * marks both links current because the URL matches both. Two current pages
+ * is a lie to assistive technology, so only Listings sets `currentPage`.
  */
 export interface PrimaryNavLink {
   readonly label: string;
   readonly to: string;
+  readonly currentPage: boolean;
 }
 
 export const primaryNavLinks: readonly PrimaryNavLink[] = [
-  { label: 'Home', to: '/' },
-  { label: 'Listings', to: '/' },
+  { label: 'Home', to: '/listings', currentPage: false },
+  { label: 'Listings', to: '/listings', currentPage: true },
 ];

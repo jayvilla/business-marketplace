@@ -41,7 +41,7 @@ describe('AppHeader', () => {
     const { wrapper: header } = await mountHeader();
 
     expect(header.get('a.brand').text()).toBe('Business Marketplace');
-    expect(header.get('a.brand').attributes('href')).toBe('/');
+    expect(header.get('a.brand').attributes('href')).toBe('/listings');
     expect(header.get('a.brand').attributes('aria-current')).toBeUndefined();
 
     const button = menuButton(header);
@@ -54,13 +54,13 @@ describe('AppHeader', () => {
     expect(nav.classes()).not.toContain('is-open');
     const links = nav.findAll('a');
     expect(links.map((link) => link.text())).toEqual(['Home', 'Listings']);
-    expect(links.every((link) => link.attributes('href') === '/')).toBe(true);
-    expect(
-      links.every((link) => link.attributes('aria-current') === 'page'),
-    ).toBe(true);
-    expect(links.every((link) => link.classes().includes('is-active'))).toBe(
+    expect(links.every((link) => link.attributes('href') === '/listings')).toBe(
       true,
     );
+    expect(links[0]?.attributes('aria-current')).toBeUndefined();
+    expect(links[0]?.classes()).not.toContain('is-active');
+    expect(links[1]?.attributes('aria-current')).toBe('page');
+    expect(links[1]?.classes()).toContain('is-active');
   });
 
   it('does not mark the primary links current on another route', async () => {
@@ -133,7 +133,7 @@ describe('AppHeader', () => {
     await header.get('#primary-navigation a').trigger('click');
     await flushPromises();
 
-    expect(router.currentRoute.value.path).toBe('/');
+    expect(router.currentRoute.value.path).toBe('/listings');
     expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
   });
 

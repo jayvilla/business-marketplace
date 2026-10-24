@@ -17,13 +17,27 @@ import { primaryNavLinks } from './primary-nav';
     <div class="inner">
       <p class="brand">Business Marketplace</p>
       <nav aria-label="Footer">
+        <!--
+          Same current-page rule as the header. A default active class
+          would mark Home and Listings both current.
+        -->
         <RouterLink
           v-for="link in primaryNavLinks"
           :key="link.label"
+          v-slot="{ href, navigate, isExactActive }"
           :to="link.to"
-          exact-active-class="is-active"
+          custom
         >
-          {{ link.label }}
+          <a
+            :href="href"
+            :class="{ 'is-active': link.currentPage && isExactActive }"
+            :aria-current="
+              link.currentPage && isExactActive ? 'page' : undefined
+            "
+            @click="navigate"
+          >
+            {{ link.label }}
+          </a>
         </RouterLink>
       </nav>
       <p class="copyright">© 2026 Business Marketplace</p>

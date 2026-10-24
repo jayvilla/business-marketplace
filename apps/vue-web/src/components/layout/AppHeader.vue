@@ -34,6 +34,20 @@ function closeMenu(): void {
 }
 
 /**
+ * Close first, then navigate. The click handler still runs when the URL
+ * does not change, which is the Home link on this page. `navigate` keeps
+ * modified clicks with the browser, so this handler must not call
+ * `preventDefault` itself.
+ */
+function followLink(
+  event: MouseEvent,
+  navigate: (event?: MouseEvent) => void,
+): void {
+  closeMenu();
+  navigate(event);
+}
+
+/**
  * A click on a link misses the browser Back button, so the path is watched
  * as well. The click handler still runs: activating the link for the page
  * you are already on does not change `fullPath`, and the disclosure should
@@ -77,7 +91,7 @@ onUnmounted(() => {
         links are the current-page controls. `navigate` keeps modified
         clicks (Ctrl, middle button) on the browser.
       -->
-      <RouterLink v-slot="{ href, navigate }" to="/" custom>
+      <RouterLink v-slot="{ href, navigate }" to="/listings" custom>
         <a class="brand" :href="href" @click="navigate">Business Marketplace</a>
       </RouterLink>
 
@@ -98,14 +112,28 @@ onUnmounted(() => {
         :class="{ 'is-open': menuOpen }"
         aria-label="Primary"
       >
+        <!--
+          Custom slot, not `exact-active-class`. Home and Listings share a
+          URL, and the default class would mark both as the current page.
+          `currentPage` is the one that may carry `aria-current`.
+        -->
         <RouterLink
           v-for="link in primaryNavLinks"
           :key="link.label"
+          v-slot="{ href, navigate, isExactActive }"
           :to="link.to"
-          exact-active-class="is-active"
-          @click="closeMenu"
+          custom
         >
-          {{ link.label }}
+          <a
+            :href="href"
+            :class="{ 'is-active': link.currentPage && isExactActive }"
+            :aria-current="
+              link.currentPage && isExactActive ? 'page' : undefined
+            "
+            @click="followLink($event, navigate)"
+          >
+            {{ link.label }}
+          </a>
         </RouterLink>
       </nav>
     </div>
@@ -201,9 +229,8 @@ onUnmounted(() => {
 }
 
 /*
- * `exact-active-class` is `is-active` when this URL is the current page.
- * Both links point at `/`, so both are current there. That matches the
- * Angular header, which points Home and Listings at the same screen.
+ * `is-active` is applied in the template only for the link that may be
+ * the current page. Home shares the URL and stays unmarked.
  */
 .nav a.is-active {
   color: var(--color-primary);

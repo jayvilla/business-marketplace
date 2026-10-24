@@ -18,7 +18,7 @@ import { RouterLink } from 'vue-router';
   <section class="page" aria-labelledby="not-found-heading">
     <h1 id="not-found-heading">Page not found</h1>
     <p>That address does not match a page in this application.</p>
-    <RouterLink class="back" to="/"> Back to listings </RouterLink>
+    <RouterLink class="back" to="/listings"> Back to listings </RouterLink>
   </section>
 </template>
 
