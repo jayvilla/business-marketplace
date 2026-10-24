@@ -23,6 +23,7 @@ const menuOpen = ref(false);
  * `document.querySelector` would reach outside the component.
  */
 const menuButton = useTemplateRef<HTMLButtonElement>('menuButton');
+const headerRoot = useTemplateRef<HTMLElement>('headerRoot');
 const route = useRoute();
 
 function toggleMenu(): void {
@@ -30,6 +31,25 @@ function toggleMenu(): void {
 }
 
 function closeMenu(): void {
+  menuOpen.value = false;
+}
+
+/**
+ * The open disclosure is part of the sticky bar, and it is taller than
+ * the closed header. Tabbing into the page would leave the next control
+ * under that bar. Closing when focus leaves the header returns the bar
+ * to the height `scroll-padding-top` already clears. Moving between the
+ * brand, the toggle, and the links stays inside the header, so the
+ * disclosure stays open.
+ */
+function onHeaderFocusOut(event: FocusEvent): void {
+  if (!menuOpen.value) {
+    return;
+  }
+  const next = event.relatedTarget;
+  if (next instanceof Node && headerRoot.value?.contains(next)) {
+    return;
+  }
   menuOpen.value = false;
 }
 
@@ -84,7 +104,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="bar">
+  <header ref="headerRoot" class="bar" @focusout="onHeaderFocusOut">
     <div class="inner">
       <!--
         Custom slot so the brand navigates without `aria-current`. The nav

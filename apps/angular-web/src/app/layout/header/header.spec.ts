@@ -22,9 +22,9 @@ describe('Header', () => {
     const fixture = TestBed.createComponent(Header);
     await fixture.whenStable();
 
-    expect(menuButton(fixture.nativeElement).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
+    expect(
+      menuButton(fixture.nativeElement).getAttribute('aria-expanded'),
+    ).toBe('false');
     expect(
       fixture.nativeElement.querySelector('nav')?.classList.contains('is-open'),
     ).toBe(false);
@@ -45,6 +45,48 @@ describe('Header', () => {
     button.click();
     await fixture.whenStable();
     expect(button.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes the menu when focus leaves the header', async () => {
+    const fixture = TestBed.createComponent(Header);
+    await fixture.whenStable();
+    const button = menuButton(fixture.nativeElement);
+    button.click();
+    await fixture.whenStable();
+
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    fixture.nativeElement.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }),
+    );
+    await fixture.whenStable();
+
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    outside.remove();
+  });
+
+  it('keeps the menu open while focus moves between header controls', async () => {
+    const fixture = TestBed.createComponent(Header);
+    await fixture.whenStable();
+    const button = menuButton(fixture.nativeElement);
+    button.click();
+    await fixture.whenStable();
+    const links = fixture.nativeElement.querySelectorAll('a');
+    const first = links[0];
+    const second = links[1];
+    if (
+      !(first instanceof HTMLAnchorElement) ||
+      !(second instanceof HTMLAnchorElement)
+    ) {
+      throw new Error('Expected two header links');
+    }
+
+    first.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: second }),
+    );
+    await fixture.whenStable();
+
+    expect(button.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('closes an open menu when Escape is pressed', async () => {

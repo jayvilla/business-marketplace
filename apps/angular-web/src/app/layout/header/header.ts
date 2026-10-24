@@ -41,6 +41,7 @@ import { filter } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown.escape)': 'closeMenuFromKeyboard()',
+    '(focusout)': 'closeMenuWhenFocusLeaves($event)',
   },
 })
 export class Header {
@@ -82,5 +83,24 @@ export class Header {
 
     this.menuOpen.set(false);
     this.menuButton()?.nativeElement.focus();
+  }
+
+  /**
+   * The open disclosure is inside the sticky host, and it is taller than
+   * the closed bar. A focused control in the page can sit under that bar.
+   * Focus that stays on the brand, the toggle, or a link does not close it.
+   */
+  protected closeMenuWhenFocusLeaves(event: FocusEvent): void {
+    if (!this.menuOpen()) {
+      return;
+    }
+
+    const next = event.relatedTarget;
+    const host = event.currentTarget;
+    if (next instanceof Node && host instanceof Node && host.contains(next)) {
+      return;
+    }
+
+    this.menuOpen.set(false);
   }
 }

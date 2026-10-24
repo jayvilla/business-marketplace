@@ -2,7 +2,7 @@
 
 An independent educational project for browsing fictional businesses for sale. It is inspired by business-for-sale marketplaces.
 
-The Angular application is the working client. It searches, filters, sorts, and pages listings served by an ASP.NET Core API. The API persists those listings in PostgreSQL with Entity Framework Core. A Vue application is in the same Nx workspace as a starter and does not call the API yet.
+The Angular application and the Vue application are both working clients. Each one searches, filters, sorts, and pages listings served by an ASP.NET Core API. The API persists those listings in PostgreSQL with Entity Framework Core.
 
 Nx keeps the clients and the API in one repository so they can be built and tested with a shared command style. Both frontends are meant to consume the same HTTP API. There is no shared TypeScript contract package yet.
 
@@ -27,18 +27,18 @@ Nx keeps the clients and the API in one repository so they can be built and test
 
 Versions below are the ranges and packages declared in this repository.
 
-| Area | Choice |
-| --- | --- |
-| Frontend frameworks | Angular ~22.1, Vue ^3.5 |
-| Languages | TypeScript ~6.0 (Angular and Vue), C# (.NET 10) |
-| Backend | ASP.NET Core Web API, target framework `net10.0` |
-| Database | PostgreSQL 17 (`postgres:17` in Docker Compose) |
-| ORM | Entity Framework Core 10.0.13 with Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3 |
-| Monorepo | Nx 23.3 |
-| Package manager | pnpm 12.14.0 (`packageManager` in `package.json`) |
-| Development infrastructure | Docker Compose, Kestrel on HTTP |
-| API tests | xUnit 2.9.3, Microsoft.AspNetCore.Mvc.Testing 10.0.13, Testcontainers.PostgreSql 4.16.0, Coverlet collector 6.0.4 |
-| Frontend tests | Angular unit tests through `@angular/build:unit-test`; Vue tests through Vitest ^4 and Vue Test Utils |
+| Area                       | Choice                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Frontend frameworks        | Angular ~22.1, Vue ^3.5                                                                                           |
+| Languages                  | TypeScript ~6.0 (Angular and Vue), C# (.NET 10)                                                                   |
+| Backend                    | ASP.NET Core Web API, target framework `net10.0`                                                                  |
+| Database                   | PostgreSQL 17 (`postgres:17` in Docker Compose)                                                                   |
+| ORM                        | Entity Framework Core 10.0.13 with Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3                                   |
+| Monorepo                   | Nx 23.3                                                                                                           |
+| Package manager            | pnpm 12.14.0 (`packageManager` in `package.json`)                                                                 |
+| Development infrastructure | Docker Compose, Kestrel on HTTP                                                                                   |
+| API tests                  | xUnit 2.9.3, Microsoft.AspNetCore.Mvc.Testing 10.0.13, Testcontainers.PostgreSql 4.16.0, Coverlet collector 6.0.4 |
+| Frontend tests             | Angular unit tests through `@angular/build:unit-test`; Vue tests through Vitest ^4 and Vue Test Utils             |
 
 Angular also uses RxJS ~7.8 and SCSS. Vue uses Vue Router ^4.5 and Vite ^8. The API document is produced by Microsoft.AspNetCore.OpenApi 10.0.13 and viewed with Swashbuckle.AspNetCore.SwaggerUI 10.3.0.
 
@@ -54,8 +54,9 @@ business-marketplace/
         layout/                  Header and footer
         pages/                   Unknown-route page
       public/listings/           Local SVG placeholders
-    vue-web/                     Vue 3 starter (Vite + Vue Router)
-      src/views/                 Home and About
+    vue-web/                     Vue 3 client (Vite + Vue Router)
+      src/features/listings/     Search, filters, cards, pagination
+      src/components/layout/     Header and footer
     api/
       BusinessMarketplace.slnx   .NET solution
       BusinessMarketplace.Api/
@@ -87,14 +88,14 @@ Application work is the Nx projects `angular-web`, `vue-web`, and `api`. The roo
 ```mermaid
 flowchart TD
   angular[Angular client]
-  vue[Vue starter]
+  vue[Vue client]
   api[ASP.NET Core API]
   services[Application services]
   ef[Entity Framework Core]
   db[(PostgreSQL)]
 
   angular -->|HTTP JSON| api
-  vue -.->|not connected| api
+  vue -->|HTTP JSON| api
   api --> services
   services --> ef
   ef --> db
@@ -106,7 +107,7 @@ The browsers talk to the API over HTTP. Angular's `API_BASE_URL` is `http://loca
 
 Entity Framework translates the listing query to SQL. Reads use `AsNoTracking`. The only secondary index is `IX_BusinessListings_Status`, because the public list filters on Active listings. Category and status are stored as enum names (`Restaurant`, `Active`), which matches the JSON values.
 
-Vue is a separate client in the workspace. It does not send listing requests.
+Vue is a separate client in the workspace. It calls the same `GET /api/listings` contract. `VITE_API_BASE_URL` defaults to `http://localhost:5000`. There is still no shared TypeScript package between the clients and the API.
 
 ## Prerequisites
 
@@ -168,24 +169,24 @@ pnpm exec nx build api
 
 ## Local development URLs
 
-| Application | Nx project | URL |
-| --- | --- | --- |
-| Angular | `angular-web` | http://localhost:4200 |
+| Application      | Nx project    | URL                            |
+| ---------------- | ------------- | ------------------------------ |
+| Angular          | `angular-web` | http://localhost:4200          |
 | Angular listings | `angular-web` | http://localhost:4200/listings |
-| Vue | `vue-web` | http://localhost:4201 |
-| API | `api` | http://localhost:5000 |
+| Vue              | `vue-web`     | http://localhost:4201          |
+| API              | `api`         | http://localhost:5000          |
 
 `/` on the Angular app redirects to `/listings`. Vue is pinned to 4201 with `strictPort`, so it does not move onto Angular's port. The API launch profile listens on HTTP only. Vue's Vite preview server is port 4300 (`nx preview vue-web`).
 
 In Development only:
 
-| Resource | URL |
-| --- | --- |
-| OpenAPI document | http://localhost:5000/openapi/v1.json |
-| Swagger UI | http://localhost:5000/swagger |
-| Process health | http://localhost:5000/api/health |
-| Liveness | http://localhost:5000/api/health/live |
-| Readiness | http://localhost:5000/api/health/ready |
+| Resource         | URL                                    |
+| ---------------- | -------------------------------------- |
+| OpenAPI document | http://localhost:5000/openapi/v1.json  |
+| Swagger UI       | http://localhost:5000/swagger          |
+| Process health   | http://localhost:5000/api/health       |
+| Liveness         | http://localhost:5000/api/health/live  |
+| Readiness        | http://localhost:5000/api/health/ready |
 
 ## API documentation
 
@@ -197,15 +198,15 @@ Public listing routes return Active rows only. Draft, Pending, and Sold listings
 
 One page of active listing cards.
 
-| Query | Rule |
-| --- | --- |
-| `search` | Optional. Case-insensitive substring of title, description, city, or state. Maximum 200 characters. Blank is ignored. |
-| `category` | Optional. `Restaurant`, `Retail`, `Technology`, `Healthcare`, `Manufacturing`, `ProfessionalServices`, or `Other`. |
-| `minPrice`, `maxPrice` | Optional inclusive bounds from 0 to 1000000000. `minPrice` greater than `maxPrice` is 400. |
-| `sortBy` | `AskingPrice`, `AnnualRevenue`, or `CreatedAt`. Default `CreatedAt`. |
-| `sortDirection` | `Asc` or `Desc`. Default `Desc` (newest first). |
-| `page` | Default 1. Allowed range 1 to 10000. A page past the end is 200 with an empty `items` array and the real `totalCount`. |
-| `pageSize` | Default 6. Allowed range 1 to 24. |
+| Query                  | Rule                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `search`               | Optional. Case-insensitive substring of title, description, city, or state. Maximum 200 characters. Blank is ignored.  |
+| `category`             | Optional. `Restaurant`, `Retail`, `Technology`, `Healthcare`, `Manufacturing`, `ProfessionalServices`, or `Other`.     |
+| `minPrice`, `maxPrice` | Optional inclusive bounds from 0 to 1000000000. `minPrice` greater than `maxPrice` is 400.                             |
+| `sortBy`               | `AskingPrice`, `AnnualRevenue`, or `CreatedAt`. Default `CreatedAt`.                                                   |
+| `sortDirection`        | `Asc` or `Desc`. Default `Desc` (newest first).                                                                        |
+| `page`                 | Default 1. Allowed range 1 to 10000. A page past the end is 200 with an empty `items` array and the real `totalCount`. |
+| `pageSize`             | Default 6. Allowed range 1 to 24.                                                                                      |
 
 An unknown enum, a non-numeric price, or a value outside those ranges is HTTP 400 before the action runs. No matches is HTTP 200, not 404.
 
@@ -224,8 +225,8 @@ GET /api/listings?search=Cedar%20Bakery&category=Restaurant&page=1&pageSize=6
       "id": "01910000-0000-7000-8000-000000000008",
       "title": "Cedar Bakery",
       "description": "Cedar Bakery is a fictional restaurant business in Tampa, FL. It has operated for 10 years with about 9 people on the payroll. A transferable lease has several years remaining.",
-      "askingPrice": 114085.00,
-      "annualRevenue": 193944.50,
+      "askingPrice": 114085.0,
+      "annualRevenue": 193944.5,
       "cashFlow": 27152.23,
       "city": "Tampa",
       "state": "FL",
@@ -245,11 +246,11 @@ That row comes from the deterministic development seed. Equal asking prices are 
 
 One Active listing. The detail DTO adds `status`, `createdAt`, and `updatedAt` to the summary fields. `createdAt` and `updatedAt` are ISO-8601 timestamps with an offset.
 
-| Result | When |
-| --- | --- |
-| 200 | The id is an Active listing. |
-| 404 | The id is missing, or the listing is Draft, Pending, or Sold. |
-| 400 | `{id}` is not a GUID. The route has no `:guid` constraint, so model binding reports the failure. |
+| Result | When                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------ |
+| 200    | The id is an Active listing.                                                                     |
+| 404    | The id is missing, or the listing is Draft, Pending, or Sold.                                    |
+| 400    | `{id}` is not a GUID. The route has no `:guid` constraint, so model binding reports the failure. |
 
 A 404 body looks like this:
 
@@ -268,10 +269,10 @@ The body does not include the listing title or status. `traceId` is `Activity.Cu
 
 ### Health
 
-| Method and route | Response |
-| --- | --- |
-| `GET /api/health` | 200 JSON `{ "status": "ok", "message": "API is running" }`. Does not open PostgreSQL. |
-| `GET /api/health/live` | Plain text `Healthy` when the process answers. |
+| Method and route        | Response                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`       | 200 JSON `{ "status": "ok", "message": "API is running" }`. Does not open PostgreSQL.                    |
+| `GET /api/health/live`  | Plain text `Healthy` when the process answers.                                                           |
 | `GET /api/health/ready` | Plain text `Healthy`, or `Unhealthy` with HTTP 503, after `CanConnectAsync`. The body is only that word. |
 
 ### Errors
@@ -321,9 +322,9 @@ dotnet run --project apps/api/BusinessMarketplace.Api --launch-profile http -- -
 
 One run inserts two catalogs when their ids are missing:
 
-| Catalog | Rows | Identity |
-| --- | --- | --- |
-| `SampleBusinessListings` | 11 fixed examples | `01900000-0000-7000-8000-…0001` through `…000b` |
+| Catalog                        | Rows                   | Identity                                               |
+| ------------------------------ | ---------------------- | ------------------------------------------------------ |
+| `SampleBusinessListings`       | 11 fixed examples      | `01900000-0000-7000-8000-…0001` through `…000b`        |
 | `BusinessListingSeedGenerator` | 500 generated listings | `01910000-0000-7000-8000-000000000001` through `…01f4` |
 
 The generated 500 are exactly 425 Active, 35 Pending, 25 Sold, and 15 Draft. Statuses are assigned in those counts and then shuffled with `System.Random` seeded by `3102026`, so they are not stored in four blocks. Categories use every existing `BusinessCategory` value. Cities are real city and state pairs across California, Texas, Florida, New York, Washington, Arizona, Colorado, Nevada, Oregon, Georgia, North Carolina, Illinois, Massachusetts, Tennessee, and Pennsylvania, including smaller markets. State is stored as the two-letter code.
@@ -370,14 +371,14 @@ To change the generated count, edit `Count` and the four status quotas in `Busin
 
 There is no end-to-end project. `nx.json` sets the Angular application generator's `e2eTestRunner` to `none`.
 
-| Command | What it runs |
-| --- | --- |
-| `pnpm exec nx test angular-web` | Angular unit tests (`@angular/build:unit-test`, watch disabled) |
-| `pnpm exec nx test vue-web` | Vue Vitest specs in `apps/vue-web` |
-| `pnpm exec nx test api` | Every xUnit test in `apps/api/BusinessMarketplace.slnx` |
-| `pnpm exec nx test-unit api` | API tests whose category is not `Integration` |
-| `pnpm exec nx test-integration api` | API tests marked `Category=Integration` |
-| `pnpm exec nx test-coverage api` | All API tests with Coverlet XPlat coverage |
+| Command                             | What it runs                                                    |
+| ----------------------------------- | --------------------------------------------------------------- |
+| `pnpm exec nx test angular-web`     | Angular unit tests (`@angular/build:unit-test`, watch disabled) |
+| `pnpm exec nx test vue-web`         | Vue Vitest specs in `apps/vue-web`                              |
+| `pnpm exec nx test api`             | Every xUnit test in `apps/api/BusinessMarketplace.slnx`         |
+| `pnpm exec nx test-unit api`        | API tests whose category is not `Integration`                   |
+| `pnpm exec nx test-integration api` | API tests marked `Category=Integration`                         |
+| `pnpm exec nx test-coverage api`    | All API tests with Coverlet XPlat coverage                      |
 
 The equivalent .NET commands are `dotnet test apps/api/BusinessMarketplace.slnx` and the same command with `--filter Category!=Integration` or `--filter Category=Integration`.
 
@@ -407,11 +408,10 @@ API unit tests cover mapping, service rules that do not depend on SQL translatio
 - Read-only listings API and process, liveness, and readiness checks
 - PostgreSQL persistence, one migration, and the development seed described above
 - API unit tests and PostgreSQL integration tests
-- Vue home and about routes from the Nx starter
+- Vue listings page at `/listings`, with the same search, category, price, sort, pagination, and error behavior as the Angular client
 
 **Not started**
 
-- Vue marketplace screens and API calls
 - An Angular or Vue listing detail route (`GET /api/listings/{id}` is available to a future client)
 - Authentication, listing writes, and a shared TypeScript contract library
 - End-to-end tests

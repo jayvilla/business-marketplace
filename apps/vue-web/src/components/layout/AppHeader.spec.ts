@@ -135,6 +135,39 @@ describe('AppHeader', () => {
     expect(document.activeElement).toBe(brand);
   });
 
+  it('closes the menu when focus leaves the header', async () => {
+    const { wrapper: header } = await mountHeader();
+    await header.get('button').trigger('click');
+
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    header
+      .get('#primary-navigation a')
+      .element.dispatchEvent(
+        new FocusEvent('focusout', { bubbles: true, relatedTarget: outside }),
+      );
+    await nextTick();
+
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
+    outside.remove();
+  });
+
+  it('keeps the menu open while focus moves between header controls', async () => {
+    const { wrapper: header } = await mountHeader();
+    await header.get('button').trigger('click');
+    const links = header.get('#primary-navigation').findAll('a');
+
+    links[0]?.element.dispatchEvent(
+      new FocusEvent('focusout', {
+        bubbles: true,
+        relatedTarget: links[1]?.element ?? null,
+      }),
+    );
+    await nextTick();
+
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('closes the menu when a primary link is activated', async () => {
     const { router, wrapper: header } = await mountHeader('/missing-page');
 
