@@ -1,0 +1,74 @@
+/*
+ * Design tokens for every screen. A component reads `var(--color-text)`
+ * and picks up a change here without each file being edited.
+ *
+ * The names and the values match the Angular client's `styles/_tokens.scss`
+ * so the two applications share a scale. This file does not import Angular.
+ * Custom properties are the shared idea. There is no shared stylesheet package.
+ *
+ * The pairs below are intended to meet WCAG 2.2 AA for normal text (4.5:1).
+ *
+ * A media query cannot read a custom property. The query is resolved first.
+ * These queries assign the properties instead, at the same widths the Angular
+ * client uses: 48rem, 64rem, and 90rem. Mobile is the default.
+ */
+
+:root {
+  color-scheme: light;
+
+  --color-bg: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e8eef5;
+  --color-text: #141920;
+  --color-text-muted: #3a4553;
+  --color-border: #d5dce6;
+  --color-border-strong: #b7c2d0;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e3a8a;
+  --color-primary-contrast: #ffffff;
+  --color-focus: #1d4ed8;
+
+  --font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-h1: clamp(1.75rem, 1.15rem + 2vw, 2.5rem);
+  --font-size-h2: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --line-height-body: 1.5;
+  --line-height-heading: 1.2;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+
+  --shadow-sm: 0 1px 2px rgb(20 25 32 / 6%);
+
+  --container-max: 72rem;
+  --container-padding: 1rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --container-padding: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --container-padding: 2rem;
+  }
+}
+
+@media (min-width: 90rem) {
+  :root {
+    --container-max: 76rem;
+  }
+}
