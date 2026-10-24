@@ -226,3 +226,5 @@ Signals and `computed` are closer to Vue's `ref` and `computed` than either is t
 `FormControl` is a controlled input with a subscription channel. `v-model` is a controlled input without a form class. Both needed an explicit debounce and an explicit "empty is not zero" rule, because the platform widgets do not know the API's numeric bounds.
 
 The bundle sizes are mostly the frameworks and the decision to ship component CSS inside JavaScript or beside it. They are a poor scoreboard. The useful performance facts are the lazy listings chunk, the single debounced request, and which image is allowed to be the first paint.
+
+Topic notes for the other two apps: [Angular docs](../../angular-web/docs/README.md) and [API docs](../../api/docs/README.md).

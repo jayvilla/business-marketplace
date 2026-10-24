@@ -233,3 +233,5 @@ Phase 4.5 can add server-side search, filtering, sorting, and paging without cha
 `useListings` already aborts the previous request when `load` runs again. A filter change can call `load` with the new query. The generation counter already drops the response for the query the user has left. The piece that does not exist yet is the `updating` presentation: keep the previous rows visible while that next request is in flight, which the Angular page does and this page deliberately does not.
 
 The card still has no link. A detail route would be a different endpoint, `GET /api/listings/{id}`, and a different DTO. This phase does not call it.
+
+The server contract this client calls is documented in [the listings API](../../api/docs/listings-api.md). The Angular side of the same call is [Angular API integration](../../angular-web/docs/api-integration.md).
