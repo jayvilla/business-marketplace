@@ -255,7 +255,7 @@ describe('useListings', () => {
 
     expect(getListings).toHaveBeenCalledTimes(1);
     expect(api.listings.value).toEqual([]);
-    expect(api.status.value).toBe('loading');
+    expect(api.status.value).toBe('blocked');
     wrapper.unmount();
   });
 });

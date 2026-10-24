@@ -94,7 +94,11 @@ const showPagination = computed(() => {
   if (priceError.value !== null) {
     return false;
   }
-  if (status.value === 'loading' || status.value === 'error') {
+  if (
+    status.value === 'loading' ||
+    status.value === 'error' ||
+    status.value === 'blocked'
+  ) {
     return false;
   }
   const pages = listingPageCount(totalCount.value, query.value.pageSize);
@@ -102,6 +106,23 @@ const showPagination = computed(() => {
 });
 
 const paginationPending = computed(() => status.value === 'updating');
+
+/**
+ * The grid's status union has no `blocked` member. An inverted URL
+ * takes the price alert branch, so this value is not rendered then.
+ * Folding `blocked` into `loading` here would put skeletons back if
+ * that branch were ever skipped.
+ */
+const gridStatus = computed(() => {
+  if (
+    status.value === 'updating' ||
+    status.value === 'ready' ||
+    status.value === 'error'
+  ) {
+    return status.value;
+  }
+  return 'loading' as const;
+});
 
 function onFiltersChange(filters: ListingFilterValues): void {
   const next: ListingQuery = {
@@ -167,12 +188,17 @@ function commit(next: ListingQuery, mode: 'push' | 'replace'): void {
           Listing results
         </h2>
 
+        <!--
+          The range is already in the URL, so this alert is the whole
+          result. The grid stays unmounted: skeletons would say a
+          request is running, and it is not.
+        -->
         <p v-if="priceError" class="state" role="alert">{{ priceError }}</p>
         <template v-else>
           <p v-if="showCount" class="count" role="status">{{ countLabel }}</p>
           <ListingsGrid
             :listings="listings"
-            :status="status"
+            :status="gridStatus"
             :error-message="errorMessage"
             :empty-message="emptyMessage"
             :show-clear="

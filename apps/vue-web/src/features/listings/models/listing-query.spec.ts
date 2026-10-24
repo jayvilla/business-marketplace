@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   defaultListingQuery,
+  LISTING_MAX_PRICE,
   listingPageCount,
   listingQueryNeedsCanonicalUrl,
   listingQueryString,
+  parseDraftPrice,
   parseListingQuery,
   serializeListingQuery,
   toRouteQuery,
@@ -114,6 +116,26 @@ describe('listing query', () => {
     expect(listingQueryNeedsCanonicalUrl({}, parseListingQuery({}).query)).toBe(
       false,
     );
+  });
+
+  it('reads zero as a bound and drops a price the API would reject', () => {
+    expect(parseDraftPrice('0')).toEqual({ ok: true, value: 0 });
+    expect(parseDraftPrice('10.5')).toEqual({ ok: true, value: 10.5 });
+    expect(parseDraftPrice('')).toEqual({ ok: true, value: null });
+    expect(parseDraftPrice('-1').ok).toBe(false);
+    expect(parseDraftPrice('abc').ok).toBe(false);
+    expect(parseDraftPrice(String(LISTING_MAX_PRICE))).toEqual({
+      ok: true,
+      value: LISTING_MAX_PRICE,
+    });
+    expect(parseDraftPrice(String(LISTING_MAX_PRICE + 1)).ok).toBe(false);
+
+    const params = { minPrice: '0', maxPrice: String(LISTING_MAX_PRICE + 1) };
+    const parsed = parseListingQuery(params);
+    expect(parsed.query.minPrice).toBe(0);
+    expect(parsed.query.maxPrice).toBeNull();
+    expect(parsed.priceError).toBeNull();
+    expect(listingQueryNeedsCanonicalUrl(params, parsed.query)).toBe(true);
   });
 
   it('keeps an inverted price range and reports it', () => {

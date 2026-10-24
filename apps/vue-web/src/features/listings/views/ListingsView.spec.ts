@@ -309,6 +309,23 @@ describe('ListingsView', () => {
     wrapper.unmount();
   });
 
+  it('keeps an invalid price draft off the URL and does not request it', async () => {
+    getListings.mockResolvedValue(page(['Harbor & Rye'], 1));
+    const { router, wrapper } = await mountView();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await wrapper.get('#listing-min-price').setValue('abc');
+    await vi.advanceTimersByTimeAsync(LISTING_TEXT_DEBOUNCE_MS);
+    await flushPromises();
+
+    expect(router.currentRoute.value.query).toEqual({});
+    expect(getListings).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('#listing-filter-error').text()).toBe(
+      'Enter a price as a number zero or greater.',
+    );
+    wrapper.unmount();
+  });
+
   it('blocks an inverted price link and does not request it', async () => {
     getListings.mockResolvedValue(page(['Harbor & Rye'], 1));
     const { router, wrapper } = await mountView(
@@ -320,6 +337,7 @@ describe('ListingsView', () => {
     );
     expect(wrapper.find('article').exists()).toBe(false);
     expect(wrapper.find('.skeleton').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Loading listings.');
     expect(getListings).not.toHaveBeenCalled();
     expect(router.currentRoute.value.query).toMatchObject({
       minPrice: '10',

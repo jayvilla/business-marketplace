@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue';
 import {
+  draftPriceMessage,
   filtersEqual,
   LISTING_CATEGORIES,
   LISTING_MAX_SEARCH_LENGTH,
+  LISTING_PRICE_ORDER_ERROR,
   LISTING_SORTS,
   LISTING_TEXT_DEBOUNCE_MS,
   listingCategoryLabel,
   listingSortLabel,
+  parseDraftPrice,
   type ListingCategory,
   type ListingFilters,
   type ListingQuery,
@@ -26,6 +29,17 @@ import {
  * The timer is cleared when the committed query changes underneath the
  * draft. That is Back, Forward, and Clear. A keystroke that has not
  * been committed yet must not write over the URL those actions restored.
+ *
+ * Text fields use `v-model` so the draft ref and the input stay paired.
+ * The commit still waits on the timer or on submit. `v-model.trim`
+ * would eat a space the user has not finished typing. `v-model.number`
+ * would turn an empty price into `0` and a word into `NaN`. Prices stay
+ * strings until `parseDraftPrice`. Selects stay on `@change` so a value
+ * that is not one of the options cannot land in the ref.
+ *
+ * There is no touched flag. The error appears when a commit is attempted
+ * and refused. Hiding it until blur would leave the URL unchanged with
+ * no explanation while the debounce had already given up.
  */
 const props = defineProps<{
   query: ListingQuery;
@@ -79,21 +93,6 @@ onUnmounted(() => {
   clearTextTimer();
 });
 
-function onSearchInput(event: Event): void {
-  search.value = inputValue(event);
-  scheduleText();
-}
-
-function onMinPriceInput(event: Event): void {
-  minPrice.value = inputValue(event);
-  scheduleText();
-}
-
-function onMaxPriceInput(event: Event): void {
-  maxPrice.value = inputValue(event);
-  scheduleText();
-}
-
 function onCategoryChange(event: Event): void {
   const value = inputValue(event);
   category.value = isCategory(value) ? value : '';
@@ -121,14 +120,27 @@ function clear(): void {
   publish();
 }
 
-function invalid(target: FilterErrorTarget): 'true' | undefined {
-  return fieldError.value?.target === target ? 'true' : undefined;
+function invalid(
+  target: 'search' | 'minPrice' | 'maxPrice',
+): 'true' | undefined {
+  return fieldMarked(target) ? 'true' : undefined;
 }
 
-function describedBy(target: FilterErrorTarget): string | undefined {
-  return fieldError.value?.target === target
-    ? 'listing-filter-error'
-    : undefined;
+function describedBy(
+  target: 'search' | 'minPrice' | 'maxPrice',
+): string | undefined {
+  return fieldMarked(target) ? 'listing-filter-error' : undefined;
+}
+
+function fieldMarked(target: 'search' | 'minPrice' | 'maxPrice'): boolean {
+  const error = fieldError.value;
+  if (error === null) {
+    return false;
+  }
+  if (error.target === 'range') {
+    return target !== 'search';
+  }
+  return error.target === target;
 }
 
 function scheduleText(): void {
@@ -165,19 +177,30 @@ function readFilters(): ListingFilters | null {
     return null;
   }
 
-  const parsedMin = readDraftPrice(minPrice.value);
-  const parsedMax = readDraftPrice(maxPrice.value);
-  if (parsedMin === undefined || parsedMax === undefined) {
+  const parsedMin = parseDraftPrice(minPrice.value);
+  const parsedMax = parseDraftPrice(maxPrice.value);
+  if (!parsedMin.ok) {
     fieldError.value = {
-      target: 'price',
-      message: 'Enter a price as a number zero or greater.',
+      target: 'minPrice',
+      message: draftPriceMessage('Minimum price', parsedMin.reason),
     };
     return null;
   }
-  if (parsedMin !== null && parsedMax !== null && parsedMin > parsedMax) {
+  if (!parsedMax.ok) {
     fieldError.value = {
-      target: 'price',
-      message: 'Minimum price cannot be greater than the maximum.',
+      target: 'maxPrice',
+      message: draftPriceMessage('Maximum price', parsedMax.reason),
+    };
+    return null;
+  }
+  if (
+    parsedMin.value !== null &&
+    parsedMax.value !== null &&
+    parsedMin.value > parsedMax.value
+  ) {
+    fieldError.value = {
+      target: 'range',
+      message: LISTING_PRICE_ORDER_ERROR,
     };
     return null;
   }
@@ -185,8 +208,8 @@ function readFilters(): ListingFilters | null {
   return {
     search: trimmedSearch,
     category: category.value === '' ? null : category.value,
-    minPrice: parsedMin,
-    maxPrice: parsedMax,
+    minPrice: parsedMin.value,
+    maxPrice: parsedMax.value,
     sort: sort.value,
   };
 }
@@ -207,19 +230,7 @@ function isSort(value: string): value is ListingSort {
   return (LISTING_SORTS as readonly string[]).includes(value);
 }
 
-/** `null` is an empty field. `undefined` is text that is not a price. */
-function readDraftPrice(value: string): number | null | undefined {
-  const trimmed = value.trim();
-  if (trimmed === '') {
-    return null;
-  }
-  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
-    return undefined;
-  }
-  return Number(trimmed);
-}
-
-type FilterErrorTarget = 'search' | 'price';
+type FilterErrorTarget = 'search' | 'minPrice' | 'maxPrice' | 'range';
 
 interface FilterFieldError {
   readonly target: FilterErrorTarget;
@@ -239,13 +250,13 @@ interface FilterFieldError {
       <label for="listing-search">Search</label>
       <input
         id="listing-search"
+        v-model="search"
         type="search"
-        :value="search"
         :maxlength="LISTING_MAX_SEARCH_LENGTH"
         autocomplete="off"
         :aria-invalid="invalid('search')"
         :aria-describedby="describedBy('search')"
-        @input="onSearchInput"
+        @input="scheduleText"
       />
     </div>
 
@@ -267,13 +278,13 @@ interface FilterFieldError {
       <label for="listing-min-price">Minimum asking price</label>
       <input
         id="listing-min-price"
+        v-model="minPrice"
         type="text"
         inputmode="decimal"
-        :value="minPrice"
         autocomplete="off"
-        :aria-invalid="invalid('price')"
-        :aria-describedby="describedBy('price')"
-        @input="onMinPriceInput"
+        :aria-invalid="invalid('minPrice')"
+        :aria-describedby="describedBy('minPrice')"
+        @input="scheduleText"
       />
     </div>
 
@@ -281,13 +292,13 @@ interface FilterFieldError {
       <label for="listing-max-price">Maximum asking price</label>
       <input
         id="listing-max-price"
+        v-model="maxPrice"
         type="text"
         inputmode="decimal"
-        :value="maxPrice"
         autocomplete="off"
-        :aria-invalid="invalid('price')"
-        :aria-describedby="describedBy('price')"
-        @input="onMaxPriceInput"
+        :aria-invalid="invalid('maxPrice')"
+        :aria-describedby="describedBy('maxPrice')"
+        @input="scheduleText"
       />
     </div>
 

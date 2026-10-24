@@ -14,6 +14,13 @@ export const LISTING_PAGE_SIZE = 6;
 export const LISTING_MAX_PAGE_SIZE = 24;
 export const LISTING_MAX_SEARCH_LENGTH = 200;
 
+/** Inclusive upper bound on `minPrice` and `maxPrice`. The API rejects more. */
+export const LISTING_MAX_PRICE = 1_000_000_000;
+
+/** Shared by the draft form and a URL that already contains an inverted range. */
+export const LISTING_PRICE_ORDER_ERROR =
+  'Minimum price cannot be greater than the maximum.';
+
 /** How long search and price wait before the URL changes. Selects do not wait. */
 export const LISTING_TEXT_DEBOUNCE_MS = 300;
 
@@ -250,9 +257,7 @@ export function parseListingQuery(
       page: readPage(readParam(params, 'page')),
       pageSize: readPageSize(readParam(params, 'pageSize')),
     },
-    priceError: inverted
-      ? 'Minimum price cannot be greater than the maximum.'
-      : null,
+    priceError: inverted ? LISTING_PRICE_ORDER_ERROR : null,
   };
 }
 
@@ -311,14 +316,60 @@ function readCategory(value: string | null): ListingCategory | null {
 }
 
 function readPrice(value: string | null): number | null {
-  if (value === null || value.trim() === '') {
+  if (value === null) {
     return null;
   }
-  const price = Number(value);
-  if (!Number.isFinite(price) || price < 0) {
-    return null;
+  const parsed = parseDraftPrice(value);
+  return parsed.ok ? parsed.value : null;
+}
+
+export type DraftPriceReason = 'malformed' | 'negative' | 'above-maximum';
+
+export type DraftPriceResult =
+  | { readonly ok: true; readonly value: number | null }
+  | { readonly ok: false; readonly reason: DraftPriceReason };
+
+/**
+ * One price grammar for the draft form and for the URL.
+ *
+ * Empty is `null`, which means the bound is unset. Zero is a real bound.
+ * Letters, a leading minus, and a value above `LISTING_MAX_PRICE` are
+ * failures. They are not coerced to zero. The form shows the failure.
+ * The URL parser drops it and the page rewrites the address, because a
+ * shared link is not a field the user is still editing.
+ */
+export function parseDraftPrice(raw: string): DraftPriceResult {
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    return { ok: true, value: null };
   }
-  return price;
+  if (/^-\d+(\.\d+)?$/.test(trimmed)) {
+    return { ok: false, reason: 'negative' };
+  }
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    return { ok: false, reason: 'malformed' };
+  }
+  const price = Number(trimmed);
+  if (!Number.isFinite(price)) {
+    return { ok: false, reason: 'malformed' };
+  }
+  if (price > LISTING_MAX_PRICE) {
+    return { ok: false, reason: 'above-maximum' };
+  }
+  return { ok: true, value: price };
+}
+
+export function draftPriceMessage(
+  field: 'Minimum price' | 'Maximum price',
+  reason: DraftPriceReason,
+): string {
+  if (reason === 'negative') {
+    return `${field} must be zero or greater.`;
+  }
+  if (reason === 'above-maximum') {
+    return `${field} cannot exceed $1,000,000,000.`;
+  }
+  return 'Enter a price as a number zero or greater.';
 }
 
 function readPage(value: string | null): number {

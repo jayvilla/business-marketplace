@@ -49,12 +49,17 @@ export interface ListingsRequest {
 }
 
 /**
- * What the grid is allowed to draw. `blocked` is not one of these.
- * An inverted price is a form problem the view already shows, and the
- * composable reports `loading` because the next valid query has no
- * page left to keep.
+ * `blocked` is an inverted price already in the URL. No request is
+ * running. Reporting it as `loading` would be permission to show
+ * skeletons and "Loading listings." The view draws the price alert
+ * instead, and does not pass `blocked` to the grid.
  */
-export type ListingsStatus = 'loading' | 'updating' | 'ready' | 'error';
+export type ListingsStatus =
+  | 'loading'
+  | 'updating'
+  | 'ready'
+  | 'error'
+  | 'blocked';
 
 /**
  * Public surface. Every data field is a computed, which Vue will not
@@ -100,6 +105,9 @@ export function useListings(
 
   const listings = computed(() => visiblePage(state.value)?.items ?? []);
   const status = computed((): ListingsStatus => {
+    if (state.value.kind === 'blocked') {
+      return 'blocked';
+    }
     if (state.value.kind === 'updating') {
       return 'updating';
     }
