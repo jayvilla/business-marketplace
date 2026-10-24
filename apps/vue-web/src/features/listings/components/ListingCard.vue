@@ -18,15 +18,16 @@ const props = defineProps<{
 }>();
 
 /**
- * A failed photo must not stick when the parent passes a different listing
- * into this instance. The watch clears the flag when `listing` changes.
- * Stable `v-for` keys make that rare; the watch still covers a parent that
- * reuses the instance on purpose.
+ * A failed photo stays failed when the parent rebuilds an equivalent
+ * listing. A retry creates a new object with the same URL. Watching the
+ * object would clear the flag and start the same broken request again.
+ * Watching `imageUrl` clears the flag only when the source actually
+ * changes, so that new URL can load.
  */
 const imageFailed = ref(false);
 
 watch(
-  () => props.listing,
+  () => props.listing.imageUrl,
   () => {
     imageFailed.value = false;
   },

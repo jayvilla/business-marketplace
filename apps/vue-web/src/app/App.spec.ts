@@ -1,8 +1,19 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import App from './App.vue';
 import { createAppRouter } from './router';
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise(() => undefined)),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /**
  * Memory history starts nowhere. Push the URL under test before mount so

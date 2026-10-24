@@ -4,9 +4,8 @@
  * This is not `BusinessListingSummaryDto` and not the Angular HTTP summary.
  * Those keep `city` and `state` apart, send a category identifier such as
  * `ProfessionalServices`, and use a nullable image URL. The card wants one
- * location line, a display label, and a URL it can put on `<img>`. The
- * phase that calls the API owns that copy. This phase's fixtures are
- * already in this shape, so there is no mapper yet.
+ * location line, a display label, and a URL it can put on `<img>`.
+ * `toBusinessListing` makes that copy. This file does not know about HTTP.
  *
  * Null money means the seller did not disclose the figure. It does not
  * mean zero. `featured` is a card flag. The summary DTO has no such field,

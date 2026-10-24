@@ -110,4 +110,29 @@ describe('ListingCard', () => {
     expect(wrapper.text()).not.toContain('Featured');
     expect(wrapper.get('img').attributes('src')).toBe('/listings/retail.svg');
   });
+
+  it('keeps a failed image when the same URL arrives on a new object', async () => {
+    const failed = businessListing({
+      imageUrl: 'https://cdn.example.com/harbor.jpg',
+    });
+    const wrapper = mount(ListingCard, {
+      props: { listing: failed },
+    });
+
+    await wrapper.get('img').trigger('error');
+    expect(wrapper.get('img').attributes('src')).toBe(
+      placeholderForCategory('Restaurant'),
+    );
+
+    await wrapper.setProps({
+      listing: businessListing({
+        imageUrl: 'https://cdn.example.com/harbor.jpg',
+        title: 'Harbor & Rye',
+      }),
+    });
+
+    expect(wrapper.get('img').attributes('src')).toBe(
+      placeholderForCategory('Restaurant'),
+    );
+  });
 });

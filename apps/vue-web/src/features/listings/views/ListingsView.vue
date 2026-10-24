@@ -1,38 +1,49 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import ListingsGrid from '../components/ListingsGrid.vue';
-import { fixtureListings } from '../fixtures/sample-listings';
+import { useListings } from '../composables/use-listings';
 
 /**
- * Listings screen. The grid receives the fixture array and the default
- * `ready` status. Loading, empty, and error are covered by grid tests.
- * This view does not add a control that switches those states, and it does
- * not call the API.
+ * Listings screen. The composable owns the request. This template only
+ * chooses what the grid is told.
  *
- * The count is a constant derived from that array. It is not a `computed`,
- * because nothing here changes the array after setup.
+ * The count uses both the rows on this page and the API total. When the
+ * total is larger, the sentence says so. Six cards are not the catalog.
  */
-const listingCountLabel =
-  fixtureListings.length === 1
-    ? '1 listing'
-    : `${fixtureListings.length} listings`;
+const { listings, status, errorMessage, totalCount, retry } = useListings();
+
+const countLabel = computed(() => {
+  if (status.value !== 'ready') {
+    return '';
+  }
+  const shown = listings.value.length;
+  const total = totalCount.value;
+  if (shown === 0 || total === 0) {
+    return '';
+  }
+  if (shown === total) {
+    return total === 1 ? '1 listing' : `${total} listings`;
+  }
+  return `Showing ${shown} of ${total} listings`;
+});
 </script>
 
 <template>
   <div class="page">
     <header class="intro">
       <h1>Businesses for Sale</h1>
-      <!--
-        Angular's second sentence names search, filters, sort, and paging.
-        Those controls are on the Angular page. They are not on this one,
-        so the sentence would advertise actions the page does not have.
-      -->
       <p>Published listings from the marketplace.</p>
     </header>
 
     <section class="results" aria-labelledby="results-heading">
       <h2 id="results-heading" tabindex="-1">Listing results</h2>
-      <p class="count" role="status">{{ listingCountLabel }}</p>
-      <ListingsGrid :listings="fixtureListings" />
+      <p v-if="countLabel" class="count" role="status">{{ countLabel }}</p>
+      <ListingsGrid
+        :listings="listings"
+        :status="status"
+        :error-message="errorMessage"
+        @retry="retry"
+      />
     </section>
   </div>
 </template>

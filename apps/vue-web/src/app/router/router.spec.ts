@@ -1,8 +1,19 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import App from '../App.vue';
 import { createAppRouter, routes } from './index';
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise(() => undefined)),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function mountAt(path: string) {
   const router = createAppRouter(createMemoryHistory());
@@ -26,7 +37,7 @@ describe('routes', () => {
 
     expect(router.currentRoute.value.path).toBe('/listings');
     expect(wrapper.get('h1').text()).toBe('Businesses for Sale');
-    expect(wrapper.text()).toContain('Harbor & Rye');
+    expect(wrapper.text()).toContain('Loading listings.');
     const primaryLinks = wrapper.get('header nav').findAll('a');
     expect(primaryLinks[0]?.attributes('aria-current')).toBeUndefined();
     expect(primaryLinks[1]?.text()).toBe('Listings');

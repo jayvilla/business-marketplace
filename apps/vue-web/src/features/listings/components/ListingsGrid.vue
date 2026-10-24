@@ -52,8 +52,9 @@ function onRetry(): void {
 
 /**
  * The button exists only when a parent passed `@retry`. Emitting with
- * nobody listening is a control that does nothing. The fixture page does
- * not listen, because its grid is never in the error status.
+ * nobody listening is a control that does nothing. The listings page
+ * passes that listener. A parent that sets `error` without one gets the
+ * message and no button.
  *
  * Declared emits are removed from `$attrs`, so the listener is read from
  * the vnode. Vue names it `onRetry` for an emit called `retry`.
