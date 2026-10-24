@@ -25,7 +25,10 @@ describe('routes', () => {
     const wrapper = await mountAt('/');
 
     expect(wrapper.get('h1').text()).toBe('Businesses for Sale');
-    expect(wrapper.get('nav a').attributes('aria-current')).toBe('page');
+    const primaryLinks = wrapper.get('header nav').findAll('a');
+    expect(
+      primaryLinks.every((link) => link.attributes('aria-current') === 'page'),
+    ).toBe(true);
     expect(wrapper.get('a.brand').attributes('aria-current')).toBeUndefined();
     expect(document.title).toBe('Businesses for Sale');
 
@@ -37,7 +40,12 @@ describe('routes', () => {
 
     expect(wrapper.get('main h1').text()).toBe('Page not found');
     expect(wrapper.get('main a').attributes('href')).toBe('/');
-    expect(wrapper.get('nav a').attributes('aria-current')).toBeUndefined();
+    expect(
+      wrapper
+        .get('header nav')
+        .findAll('a')
+        .every((link) => link.attributes('aria-current') === undefined),
+    ).toBe(true);
     expect(document.title).toBe('Page not found');
 
     wrapper.unmount();

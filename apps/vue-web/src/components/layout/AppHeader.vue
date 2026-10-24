@@ -1,35 +1,111 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router';
+import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
+import { primaryNavLinks } from './primary-nav';
 
 /**
- * Site header. It is its own component so the shell only composes
- * landmarks. A feature view should not know how the brand is marked up.
+ * Site header. The shell only composes landmarks. Menu state stays here so
+ * a feature view does not learn that the menu exists.
  *
- * The brand uses the custom slot so it can navigate without `aria-current`.
- * The listings link is the current-page control. Vue Router sets
- * `aria-current="page"` on that anchor when the URL is exactly `/`.
+ * `menuOpen` is a `ref`. The template reads it as a boolean. Script reads
+ * and writes `menuOpen.value`, because the ref object itself is not the
+ * boolean.
  *
- * The brand's click handler is Vue Router's `navigate`. It calls
- * `preventDefault` for a plain click and leaves modified clicks alone, so
- * Ctrl-click and a middle click still open a new tab. A `.prevent` modifier
- * on the listener would cancel those clicks too.
- *
- * The nav stays in normal flow and wraps under the brand on a narrow row.
- * A disclosure menu belongs with the fuller layout, once more than one
- * destination needs hiding.
+ * The panel is a disclosure in normal flow, not a dialog and not a menu
+ * widget. There is no focus trap and no `role="menu"`. Links and the toggle
+ * use the browser's tab order.
  */
+const menuOpen = ref(false);
+
+/**
+ * Filled after mount from `ref="menuButton"`. Escape handling uses it to
+ * return focus to the toggle. `useTemplateRef` is that binding. A
+ * `document.querySelector` would reach outside the component.
+ */
+const menuButton = useTemplateRef<HTMLButtonElement>('menuButton');
+const route = useRoute();
+
+function toggleMenu(): void {
+  menuOpen.value = !menuOpen.value;
+}
+
+function closeMenu(): void {
+  menuOpen.value = false;
+}
+
+/**
+ * A click on a link misses the browser Back button, so the path is watched
+ * as well. The click handler still runs: activating the link for the page
+ * you are already on does not change `fullPath`, and the disclosure should
+ * still close.
+ */
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false;
+  },
+);
+
+/**
+ * Escape is not a native behavior of `<button>`. This is the one custom
+ * key listener. It acts only while the disclosure is open, then returns
+ * focus to the toggle. Arrow keys stay with the browser.
+ */
+function onDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !menuOpen.value) {
+    return;
+  }
+
+  menuOpen.value = false;
+  menuButton.value?.focus();
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onDocumentKeydown);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onDocumentKeydown);
+});
 </script>
 
 <template>
   <header class="bar">
     <div class="inner">
+      <!--
+        Custom slot so the brand navigates without `aria-current`. The nav
+        links are the current-page controls. `navigate` keeps modified
+        clicks (Ctrl, middle button) on the browser.
+      -->
       <RouterLink v-slot="{ href, navigate }" to="/" custom>
         <a class="brand" :href="href" @click="navigate">Business Marketplace</a>
       </RouterLink>
 
-      <nav aria-label="Primary">
-        <RouterLink to="/" exact-active-class="is-active">
-          Listings
+      <button
+        ref="menuButton"
+        type="button"
+        class="menu-toggle"
+        :aria-expanded="menuOpen ? 'true' : 'false'"
+        aria-controls="primary-navigation"
+        @click="toggleMenu"
+      >
+        {{ menuOpen ? 'Close' : 'Menu' }}
+      </button>
+
+      <nav
+        id="primary-navigation"
+        class="nav"
+        :class="{ 'is-open': menuOpen }"
+        aria-label="Primary"
+      >
+        <RouterLink
+          v-for="link in primaryNavLinks"
+          :key="link.label"
+          :to="link.to"
+          exact-active-class="is-active"
+          @click="closeMenu"
+        >
+          {{ link.label }}
         </RouterLink>
       </nav>
     </div>
@@ -38,9 +114,12 @@ import { RouterLink } from 'vue-router';
 
 <style scoped>
 /*
- * `exact-active-class` is `is-active` only when this URL is the current
- * one. `router-link-active` would also match a future child of `/`, which
- * is a different statement ("this section" rather than "this page").
+ * Closed mobile nav uses `display: none`, not `v-show` and not `v-if`.
+ * `v-show` writes an inline display value, and an inline value beats the
+ * desktop media query, so the links would stay hidden at every width.
+ * `v-if` would remove the links that query needs to show. `display: none`
+ * also drops the closed links from the tab order. A height animation can
+ * leave them focusable.
  */
 .bar {
   position: sticky;
@@ -77,12 +156,36 @@ import { RouterLink } from 'vue-router';
   color: var(--color-primary);
 }
 
-nav {
-  display: flex;
-  align-items: center;
+.menu-toggle {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-nav a {
+.menu-toggle:hover {
+  background: var(--color-surface-muted);
+}
+
+.nav {
+  display: none;
+  flex: 1 0 100%;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+
+.nav.is-open {
+  display: flex;
+}
+
+.nav a {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
@@ -93,18 +196,32 @@ nav a {
   text-decoration: none;
 }
 
-nav a:hover {
+.nav a:hover {
   background: var(--color-surface-muted);
 }
 
-nav a.is-active {
+/*
+ * `exact-active-class` is `is-active` when this URL is the current page.
+ * Both links point at `/`, so both are current there. That matches the
+ * Angular header, which points Home and Listings at the same screen.
+ */
+.nav a.is-active {
   color: var(--color-primary);
   box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 @media (min-width: 48rem) {
-  .inner {
-    flex-wrap: nowrap;
+  .menu-toggle {
+    display: none;
+  }
+
+  .nav,
+  .nav.is-open {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 0;
   }
 }
 </style>

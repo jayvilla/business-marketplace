@@ -1,0 +1,158 @@
+import { flushPromises, mount } from '@vue/test-utils';
+import { afterEach, describe, expect, it } from 'vitest';
+import { nextTick } from 'vue';
+import { createMemoryHistory } from 'vue-router';
+import type { Router } from 'vue-router';
+import type { VueWrapper } from '@vue/test-utils';
+import AppHeader from './AppHeader.vue';
+import { createAppRouter } from '../../app/router';
+
+let wrapper: VueWrapper | undefined;
+
+afterEach(() => {
+  wrapper?.unmount();
+  wrapper = undefined;
+});
+
+async function mountHeader(path = '/'): Promise<{
+  router: Router;
+  wrapper: VueWrapper;
+}> {
+  const router = createAppRouter(createMemoryHistory());
+  await router.push(path);
+  wrapper = mount(AppHeader, {
+    attachTo: document.body,
+    global: { plugins: [router] },
+  });
+  await router.isReady();
+  return { router, wrapper };
+}
+
+function menuButton(root: VueWrapper): HTMLButtonElement {
+  const element = root.get('button').element;
+  if (!(element instanceof HTMLButtonElement)) {
+    throw new Error('Expected a menu button');
+  }
+  return element;
+}
+
+describe('AppHeader', () => {
+  it('renders the brand and both primary links, with the menu closed', async () => {
+    const { wrapper: header } = await mountHeader();
+
+    expect(header.get('a.brand').text()).toBe('Business Marketplace');
+    expect(header.get('a.brand').attributes('href')).toBe('/');
+    expect(header.get('a.brand').attributes('aria-current')).toBeUndefined();
+
+    const button = menuButton(header);
+    expect(button.textContent).toBe('Menu');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.getAttribute('aria-controls')).toBe('primary-navigation');
+
+    const nav = header.get('#primary-navigation');
+    expect(nav.attributes('aria-label')).toBe('Primary');
+    expect(nav.classes()).not.toContain('is-open');
+    const links = nav.findAll('a');
+    expect(links.map((link) => link.text())).toEqual(['Home', 'Listings']);
+    expect(links.every((link) => link.attributes('href') === '/')).toBe(true);
+    expect(
+      links.every((link) => link.attributes('aria-current') === 'page'),
+    ).toBe(true);
+    expect(links.every((link) => link.classes().includes('is-active'))).toBe(
+      true,
+    );
+  });
+
+  it('does not mark the primary links current on another route', async () => {
+    const { wrapper: header } = await mountHeader('/missing-page');
+    const links = header.get('#primary-navigation').findAll('a');
+
+    expect(
+      links.every((link) => link.attributes('aria-current') === undefined),
+    ).toBe(true);
+    expect(links.every((link) => !link.classes().includes('is-active'))).toBe(
+      true,
+    );
+  });
+
+  it('toggles the disclosure from the button', async () => {
+    const { wrapper: header } = await mountHeader();
+    const button = menuButton(header);
+
+    await header.get('button').trigger('click');
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.textContent).toBe('Close');
+    expect(header.get('#primary-navigation').classes()).toContain('is-open');
+
+    await header.get('button').trigger('click');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(button.textContent).toBe('Menu');
+    expect(header.get('#primary-navigation').classes()).not.toContain(
+      'is-open',
+    );
+  });
+
+  it('keeps the links in the document while the disclosure is closed', async () => {
+    const { wrapper: header } = await mountHeader();
+
+    expect(header.get('#primary-navigation').findAll('a')).toHaveLength(2);
+  });
+
+  it('closes an open menu when Escape is pressed and restores focus', async () => {
+    const { wrapper: header } = await mountHeader();
+    const button = menuButton(header);
+
+    await header.get('button').trigger('click');
+    button.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await nextTick();
+
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('ignores Escape while the menu is closed', async () => {
+    const { wrapper: header } = await mountHeader();
+    const brand = header.get('a.brand').element;
+    if (!(brand instanceof HTMLElement)) {
+      throw new Error('Expected the brand link');
+    }
+    brand.focus();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await nextTick();
+
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(brand);
+  });
+
+  it('closes the menu when a primary link is activated', async () => {
+    const { router, wrapper: header } = await mountHeader('/missing-page');
+
+    await header.get('button').trigger('click');
+    await header.get('#primary-navigation a').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/');
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes the menu after a navigation that did not click a link', async () => {
+    const { router, wrapper: header } = await mountHeader('/');
+
+    await header.get('button').trigger('click');
+    await router.push('/missing-page');
+    await flushPromises();
+
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes the menu when the current page link is activated again', async () => {
+    const { wrapper: header } = await mountHeader('/');
+
+    await header.get('button').trigger('click');
+    await header.get('#primary-navigation a').trigger('click');
+
+    expect(menuButton(header).getAttribute('aria-expanded')).toBe('false');
+  });
+});

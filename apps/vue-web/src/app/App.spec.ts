@@ -26,13 +26,19 @@ describe('App', () => {
     expect(skip.text()).toBe('Skip to content');
     expect(skip.attributes('href')).toBe('#main-content');
 
+    expect(wrapper.findAll('main')).toHaveLength(1);
     expect(wrapper.get('header').text()).toContain('Business Marketplace');
-    expect(wrapper.get('nav').attributes('aria-label')).toBe('Primary');
+    expect(wrapper.get('header nav').attributes('aria-label')).toBe('Primary');
 
     const main = wrapper.get('main#main-content');
     expect(main.attributes('tabindex')).toBe('-1');
     expect(main.get('h1').text()).toBe('Businesses for Sale');
     expect(main.find('header').exists()).toBe(false);
+    expect(main.find('footer').exists()).toBe(false);
+
+    const footer = wrapper.get('footer');
+    expect(footer.text()).toContain('© 2026 Business Marketplace');
+    expect(footer.get('nav').attributes('aria-label')).toBe('Footer');
 
     wrapper.unmount();
   });
