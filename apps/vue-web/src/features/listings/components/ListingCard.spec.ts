@@ -24,7 +24,26 @@ describe('ListingCard', () => {
     expect(image.attributes('src')).toBe('/listings/restaurant.svg');
     expect(image.attributes('alt')).toBe('');
     expect(image.attributes('loading')).toBe('lazy');
+    expect(image.attributes('fetchpriority')).toBeUndefined();
+    expect(image.attributes('decoding')).toBe('async');
+    expect(image.attributes('width')).toBe('640');
+    expect(image.attributes('height')).toBe('400');
     expect(wrapper.find('a, button').exists()).toBe(false);
+  });
+
+  it('loads a prioritized image immediately', () => {
+    const wrapper = mount(ListingCard, {
+      props: {
+        listing: businessListing(),
+        prioritizeImage: true,
+      },
+    });
+
+    const image = wrapper.get('img');
+    expect(image.attributes('loading')).toBe('eager');
+    expect(image.attributes('fetchpriority')).toBe('high');
+    expect(image.attributes('decoding')).toBe('async');
+    expect(image.attributes('alt')).toBe('');
   });
 
   it('omits the badge and says withheld figures were not disclosed', () => {

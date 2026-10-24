@@ -29,6 +29,40 @@ describe('ListingsGrid', () => {
     expect(wrapper.findAll('li')).toHaveLength(2);
     expect(wrapper.text()).toContain('Elm Street Bistro');
     expect(wrapper.text()).toContain('King Street Bakery');
+
+    const images = wrapper.findAll('img');
+    expect(images[0]?.attributes('loading')).toBe('eager');
+    expect(images[0]?.attributes('fetchpriority')).toBe('high');
+    expect(images[1]?.attributes('loading')).toBe('lazy');
+    expect(images[1]?.attributes('fetchpriority')).toBeUndefined();
+  });
+
+  it('keeps a failed image when the same listing finishes updating', async () => {
+    const harbor = businessListing({
+      id: 'lst-a',
+      title: 'Harbor & Rye',
+      imageUrl: 'https://images.example/harbor.jpg',
+    });
+    const wrapper = mount(ListingsGrid, {
+      props: { status: 'updating', listings: [harbor] },
+    });
+
+    await wrapper.get('img').trigger('error');
+    expect(wrapper.get('img').attributes('src')).toBe(
+      '/listings/restaurant.svg',
+    );
+
+    await wrapper.setProps({
+      status: 'ready',
+      listings: [businessListing({ ...harbor })],
+    });
+
+    expect(wrapper.text()).toContain('Harbor & Rye');
+    expect(wrapper.get('img').attributes('src')).toBe(
+      '/listings/restaurant.svg',
+    );
+    expect(wrapper.find('.updating').exists()).toBe(false);
+    expect(wrapper.get('ul').attributes('aria-busy')).toBeUndefined();
   });
 
   it('keeps a failed image with its listing when the collection is reordered', async () => {
@@ -124,6 +158,16 @@ describe('ListingsGrid', () => {
     await button.trigger('click');
 
     expect(wrapper.emitted('retry')).toHaveLength(1);
+  });
+
+  it('shows the updating message when the previous page was empty', () => {
+    const wrapper = mount(ListingsGrid, {
+      props: { status: 'updating', listings: [] },
+    });
+
+    expect(wrapper.get('.updating').text()).toContain('Updating listings.');
+    expect(wrapper.text()).not.toContain('No businesses are listed yet.');
+    expect(wrapper.find('article').exists()).toBe(false);
   });
 
   it('keeps the previous cards visible while results are updating', () => {

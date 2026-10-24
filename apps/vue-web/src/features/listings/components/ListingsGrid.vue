@@ -111,34 +111,41 @@ function retryListenerAttached(): boolean {
     </button>
   </div>
 
-  <div v-else-if="props.status === 'updating'">
-    <p class="updating" :role="props.announceUpdate ? 'status' : undefined">
+  <!--
+    Updating and ready share this list. Separate branches would destroy
+    the cards when the request finishes and start their images again.
+    `listing.id` is the item's identity. An index key would reuse the
+    component at that position, so reordering the array could keep one
+    card's failed-image flag on a different business.
+    The first image is the likely largest paint, so only that card loads
+    immediately. An empty in-flight page still uses this branch: the
+    empty copy is for a finished request that returned nothing.
+  -->
+  <div v-else-if="props.status === 'updating' || props.listings.length > 0">
+    <p
+      v-if="props.status === 'updating'"
+      class="updating"
+      :role="props.announceUpdate ? 'status' : undefined"
+    >
       Updating listings.
     </p>
-    <ul class="grid is-updating" aria-busy="true">
-      <li v-for="listing in props.listings" :key="listing.id">
-        <ListingCard :listing="listing" />
+    <ul
+      class="grid"
+      :class="{ 'is-updating': props.status === 'updating' }"
+      :aria-busy="props.status === 'updating' ? 'true' : undefined"
+    >
+      <li v-for="(listing, index) in props.listings" :key="listing.id">
+        <ListingCard :listing="listing" :prioritize-image="index === 0" />
       </li>
     </ul>
   </div>
 
-  <div v-else-if="props.listings.length === 0" class="state">
+  <div v-else class="state">
     <p>{{ props.emptyMessage }}</p>
     <button v-if="props.showClear" type="button" @click="onClear">
       Clear filters
     </button>
   </div>
-
-  <!--
-    `listing.id` is the item's identity. An index key would reuse the
-    component at that position, so reordering the array could keep one
-    card's failed-image flag on a different business.
-  -->
-  <ul v-else class="grid">
-    <li v-for="listing in props.listings" :key="listing.id">
-      <ListingCard :listing="listing" />
-    </li>
-  </ul>
 </template>
 
 <style scoped>

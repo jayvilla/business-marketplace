@@ -13,9 +13,18 @@ import type { BusinessListing } from '../models/business-listing';
  * The title is an `h3` because the page renders this card under the
  * "Listing results" `h2`.
  */
-const props = defineProps<{
-  listing: BusinessListing;
-}>();
+const props = withDefaults(
+  defineProps<{
+    listing: BusinessListing;
+    /**
+     * The first card is in the initial viewport and is the likely
+     * largest paint. `loading="lazy"` on that image waits for a
+     * layout the browser already has. Later cards stay lazy.
+     */
+    prioritizeImage?: boolean;
+  }>(),
+  { prioritizeImage: false },
+);
 
 /**
  * A failed photo stays failed when the parent rebuilds an equivalent
@@ -69,7 +78,8 @@ function onImageError(): void {
         alt=""
         width="640"
         height="400"
-        loading="lazy"
+        :loading="props.prioritizeImage ? 'eager' : 'lazy'"
+        :fetchpriority="props.prioritizeImage ? 'high' : undefined"
         decoding="async"
         @error="onImageError"
       />
