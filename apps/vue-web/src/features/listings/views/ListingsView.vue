@@ -1,50 +1,196 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import ListingFilters from '../components/ListingFilters.vue';
+import ListingPagination from '../components/ListingPagination.vue';
 import ListingsGrid from '../components/ListingsGrid.vue';
 import { useListings } from '../composables/use-listings';
+import {
+  listingPageCount,
+  listingQueryEqual,
+  listingQueryNeedsCanonicalUrl,
+  parseListingQuery,
+  toRouteQuery,
+  type ListingFilters as ListingFilterValues,
+  type ListingQuery,
+} from '../models/listing-query';
 
 /**
- * Listings screen. The composable owns the request. This template only
- * chooses what the grid is told.
+ * Listings screen. The address bar is the committed query.
  *
- * The count uses both the rows on this page and the API total. When the
- * total is larger, the sentence says so. Six cards are not the catalog.
+ * Draft text lives in the filter form until the debounce, a select, or
+ * Search commits it. This view writes that commit with `push`, so Back
+ * returns to the previous filters. A URL that spells a default or an
+ * unknown value is `replace`d, so it does not add a history entry and
+ * does not become a 400.
+ *
+ * The composable watches the parsed query. It does not watch the raw
+ * string, so rewriting `page=1` to nothing does not start a second GET.
  */
-const { listings, status, errorMessage, totalCount, retry } = useListings();
+const route = useRoute();
+const router = useRouter();
 
-const countLabel = computed(() => {
-  if (status.value !== 'ready') {
-    return '';
+const parsed = computed(() => parseListingQuery(route.query));
+const query = computed(() => parsed.value.query);
+const priceError = computed(() => parsed.value.priceError);
+
+const { listings, status, errorMessage, totalCount, retry } = useListings(
+  computed(() => ({
+    query: query.value,
+    blocked: priceError.value !== null,
+  })),
+);
+
+const resultsHeading = useTemplateRef<HTMLHeadingElement>('resultsHeading');
+
+watch(
+  () => route.query,
+  () => {
+    const next = parseListingQuery(route.query);
+    if (next.priceError !== null) {
+      return;
+    }
+    if (!listingQueryNeedsCanonicalUrl(route.query, next.query)) {
+      return;
+    }
+    commit(next.query, 'replace');
+  },
+  { immediate: true },
+);
+
+const filtersActive = computed(
+  () =>
+    query.value.search !== '' ||
+    query.value.category !== null ||
+    query.value.minPrice !== null ||
+    query.value.maxPrice !== null,
+);
+
+const emptyMessage = computed(() => {
+  const pages = listingPageCount(totalCount.value, query.value.pageSize);
+  if (
+    status.value === 'ready' &&
+    totalCount.value > 0 &&
+    query.value.page > pages
+  ) {
+    return 'This page is outside the results.';
   }
-  const shown = listings.value.length;
-  const total = totalCount.value;
-  if (shown === 0 || total === 0) {
-    return '';
+  if (filtersActive.value) {
+    return 'No businesses match these filters.';
   }
-  if (shown === total) {
-    return total === 1 ? '1 listing' : `${total} listings`;
-  }
-  return `Showing ${shown} of ${total} listings`;
+  return 'No businesses are listed yet.';
 });
+
+const showCount = computed(
+  () => status.value === 'ready' && totalCount.value > 0,
+);
+
+const countLabel = computed(() =>
+  totalCount.value === 1 ? '1 listing' : `${totalCount.value} listings`,
+);
+
+const showPagination = computed(() => {
+  if (priceError.value !== null) {
+    return false;
+  }
+  if (status.value === 'loading' || status.value === 'error') {
+    return false;
+  }
+  const pages = listingPageCount(totalCount.value, query.value.pageSize);
+  return pages > 1 || query.value.page > 1;
+});
+
+const paginationPending = computed(() => status.value === 'updating');
+
+function onFiltersChange(filters: ListingFilterValues): void {
+  const next: ListingQuery = {
+    ...filters,
+    page: 1,
+    pageSize: query.value.pageSize,
+  };
+  if (listingQueryEqual(next, query.value)) {
+    return;
+  }
+  commit(next, 'push');
+}
+
+function onPageChange(page: number): void {
+  const next: ListingQuery = { ...query.value, page };
+  if (listingQueryEqual(next, query.value)) {
+    return;
+  }
+  commit(next, 'push');
+  // Next can become disabled on the last page and leave the tab order.
+  // The results heading is the start of what changed. Filter changes do
+  // not move focus. The person is still in the form.
+  resultsHeading.value?.focus();
+}
+
+function onClear(): void {
+  onFiltersChange({
+    search: '',
+    category: null,
+    minPrice: null,
+    maxPrice: null,
+    sort: query.value.sort,
+  });
+}
+
+/**
+ * `push` records a filter or page change. `replace` corrects a URL the
+ * user did not type as a new step, such as `page=0` or an unknown sort.
+ */
+function commit(next: ListingQuery, mode: 'push' | 'replace'): void {
+  const location = { query: toRouteQuery(route.query, next) };
+  const result =
+    mode === 'push' ? router.push(location) : router.replace(location);
+  void result.catch(() => undefined);
+}
 </script>
 
 <template>
   <div class="page">
     <header class="intro">
       <h1>Businesses for Sale</h1>
-      <p>Published listings from the marketplace.</p>
+      <p>
+        Published listings from the marketplace API. Search, filters, sort, and
+        pages run on the server.
+      </p>
     </header>
 
-    <section class="results" aria-labelledby="results-heading">
-      <h2 id="results-heading" tabindex="-1">Listing results</h2>
-      <p v-if="countLabel" class="count" role="status">{{ countLabel }}</p>
-      <ListingsGrid
-        :listings="listings"
-        :status="status"
-        :error-message="errorMessage"
-        @retry="retry"
-      />
-    </section>
+    <div class="layout">
+      <ListingFilters :query="query" @change="onFiltersChange" />
+
+      <section class="results" aria-labelledby="results-heading">
+        <h2 id="results-heading" ref="resultsHeading" tabindex="-1">
+          Listing results
+        </h2>
+
+        <p v-if="priceError" class="state" role="alert">{{ priceError }}</p>
+        <template v-else>
+          <p v-if="showCount" class="count" role="status">{{ countLabel }}</p>
+          <ListingsGrid
+            :listings="listings"
+            :status="status"
+            :error-message="errorMessage"
+            :empty-message="emptyMessage"
+            :show-clear="
+              filtersActive && listings.length === 0 && status === 'ready'
+            "
+            @retry="retry"
+            @clear="onClear"
+          />
+          <ListingPagination
+            v-if="showPagination"
+            :page="query.page"
+            :page-size="query.pageSize"
+            :total-count="totalCount"
+            :pending="paginationPending"
+            @page-change="onPageChange"
+          />
+        </template>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -52,7 +198,8 @@ const countLabel = computed(() => {
 .intro h1,
 .results h2,
 .intro p,
-.count {
+.count,
+.state {
   margin: 0;
 }
 
@@ -63,7 +210,9 @@ const countLabel = computed(() => {
   font-size: var(--font-size-lg);
 }
 
-.results {
+.layout {
+  display: grid;
+  gap: var(--space-5);
   margin-top: var(--space-6);
 }
 
@@ -71,14 +220,31 @@ const countLabel = computed(() => {
   font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
   /*
-   * The header is sticky. A later focus of this heading should stop short
-   * of sliding underneath that bar.
+   * The header is sticky. Focusing this heading after a page change
+   * should stop short of sliding underneath that bar.
    */
   scroll-margin-top: var(--space-7);
 }
 
-.count {
+.count,
+.state {
   margin-top: var(--space-2);
   color: var(--color-text-muted);
+}
+
+.state {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+    align-items: start;
+  }
 }
 </style>

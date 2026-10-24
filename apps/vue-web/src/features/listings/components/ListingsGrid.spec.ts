@@ -125,4 +125,36 @@ describe('ListingsGrid', () => {
 
     expect(wrapper.emitted('retry')).toHaveLength(1);
   });
+
+  it('keeps the previous cards visible while results are updating', () => {
+    const wrapper = mount(ListingsGrid, {
+      props: {
+        status: 'updating',
+        listings: [listing('lst-a', 'Harbor & Rye')],
+      },
+    });
+
+    expect(wrapper.get('[role="status"]').text()).toContain(
+      'Updating listings.',
+    );
+    expect(wrapper.text()).toContain('Harbor & Rye');
+    expect(wrapper.get('ul').attributes('aria-busy')).toBe('true');
+    expect(wrapper.findAll('.skeleton')).toHaveLength(0);
+  });
+
+  it('offers clear filters only when the empty state asks for it', async () => {
+    const wrapper = mount(ListingsGrid, {
+      props: {
+        status: 'ready',
+        listings: [],
+        emptyMessage: 'No businesses match these filters.',
+        showClear: true,
+        onClear: () => undefined,
+      },
+    });
+
+    expect(wrapper.text()).toContain('No businesses match these filters.');
+    await wrapper.get('button').trigger('click');
+    expect(wrapper.emitted('clear')).toHaveLength(1);
+  });
 });

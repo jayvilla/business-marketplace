@@ -116,19 +116,28 @@ onUnmounted(() => {
           Custom slot, not `exact-active-class`. Home and Listings share a
           URL, and the default class would mark both as the current page.
           `currentPage` is the one that may carry `aria-current`.
+
+          Compare paths, not `isExactActive`. Search and filters live in
+          the query string. An exact match would drop the current-page
+          mark as soon as `?search=` is added. Home stays unmarked
+          because `currentPage` is false.
         -->
         <RouterLink
           v-for="link in primaryNavLinks"
           :key="link.label"
-          v-slot="{ href, navigate, isExactActive }"
+          v-slot="{ href, navigate, route: linkRoute }"
           :to="link.to"
           custom
         >
           <a
             :href="href"
-            :class="{ 'is-active': link.currentPage && isExactActive }"
+            :class="{
+              'is-active': link.currentPage && linkRoute.path === route.path,
+            }"
             :aria-current="
-              link.currentPage && isExactActive ? 'page' : undefined
+              link.currentPage && linkRoute.path === route.path
+                ? 'page'
+                : undefined
             "
             @click="followLink($event, navigate)"
           >

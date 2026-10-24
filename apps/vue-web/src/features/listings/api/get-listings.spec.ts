@@ -7,6 +7,7 @@ vi.mock('../../../app/api/get-json', () => ({
   getJson,
 }));
 
+import { defaultListingQuery } from '../models/listing-query';
 import { getListings } from './get-listings';
 
 const summary = {
@@ -36,7 +37,7 @@ describe('getListings', () => {
     });
     const signal = new AbortController().signal;
 
-    const page = await getListings(signal);
+    const page = await getListings(defaultListingQuery, signal);
 
     expect(getJson).toHaveBeenCalledWith(
       `${apiBaseUrl()}/api/listings`,
@@ -54,6 +55,38 @@ describe('getListings', () => {
       imageUrl: '/listings/services.svg',
       featured: false,
     });
+  });
+
+  it('encodes search, filters, sort, and page, and omits defaults', async () => {
+    getJson.mockResolvedValue({
+      items: [],
+      page: 2,
+      pageSize: 6,
+      totalCount: 0,
+    });
+
+    await getListings({
+      ...defaultListingQuery,
+      search: 'a&b=c',
+      category: 'Retail',
+      minPrice: 10,
+      maxPrice: 20,
+      sort: 'price-asc',
+      page: 2,
+    });
+
+    const url = getJson.mock.calls[0]?.[0] as string;
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe('/api/listings');
+    expect(parsed.searchParams.get('search')).toBe('a&b=c');
+    expect(url).toContain('search=a%26b%3Dc');
+    expect(parsed.searchParams.get('category')).toBe('Retail');
+    expect(parsed.searchParams.get('minPrice')).toBe('10');
+    expect(parsed.searchParams.get('maxPrice')).toBe('20');
+    expect(parsed.searchParams.get('sortBy')).toBe('AskingPrice');
+    expect(parsed.searchParams.get('sortDirection')).toBe('Asc');
+    expect(parsed.searchParams.get('page')).toBe('2');
+    expect(parsed.searchParams.has('pageSize')).toBe(false);
   });
 
   it('rejects a body that is not a page', async () => {

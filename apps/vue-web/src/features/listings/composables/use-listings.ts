@@ -1,81 +1,142 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import {
+  computed,
+  onUnmounted,
+  ref,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+} from 'vue';
 import { isAbortError } from '../../../app/api/get-json';
-import { getListings } from '../api/get-listings';
+import { getListings, type ListingPage } from '../api/get-listings';
 import {
   listingsErrorLog,
   listingsErrorMessage,
 } from '../api/listings-error-message';
-import type { BusinessListing } from '../models/business-listing';
+import {
+  defaultListingQuery,
+  listingQueryEqual,
+  type ListingQuery,
+} from '../models/listing-query';
 
 /**
- * One screen state. A loading flag plus an error flag can both be true.
- * This union cannot. Empty is `ready` with no rows.
+ * One screen state. Loading and error cannot both be true.
+ * Empty is `ready` with no rows.
  *
- * `totalCount` is the API's match size. `listings` is only the page that
- * came back. Those two numbers are allowed to differ. A page of six is
- * not the whole catalog when the total is larger.
+ * `updating` keeps the previous page on screen while a newer query is
+ * in flight, and marks it busy. Those rows are the previous answer,
+ * not the new one. The status text says so.
+ *
+ * An error discards that previous page. Showing it under the new query
+ * would claim those businesses matched a search they were not fetched
+ * for. Retry then starts from skeletons.
+ *
+ * `blocked` is an inverted price range. Nothing is fetched. The next
+ * valid query starts from skeletons, because there is no honest page
+ * to keep.
  */
 type ListingsState =
   | { readonly kind: 'loading' }
-  | {
-      readonly kind: 'ready';
-      readonly listings: readonly BusinessListing[];
-      readonly totalCount: number;
-    }
+  | { readonly kind: 'blocked' }
+  | { readonly kind: 'updating'; readonly page: ListingPage }
+  | { readonly kind: 'ready'; readonly page: ListingPage }
   | { readonly kind: 'error'; readonly message: string };
+
+export interface ListingsRequest {
+  readonly query: ListingQuery;
+  readonly blocked: boolean;
+}
 
 /**
  * Request lifecycle for the listings page.
  *
- * The state lives in this function, not in a store. The page is the only
- * reader. A store would let any component start a second request.
+ * `source` is the committed query, usually a computed of the URL.
+ * This function does not read the router. The page does.
  *
- * `load` is the GET. `retry` calls it again, and ignores a click that
- * arrives while a request is already open. Two clicks would abort the
- * first and start a duplicate of the same URL.
- *
- * Each `load` aborts the previous controller and bumps `generation`.
- * A response applies only when it is still the latest request and the
- * component is still mounted. An abort is not an error: the caller
- * canceled that request on purpose.
+ * One watch owns the GET. A query change and Retry both come through
+ * it, so a single committed change produces one request. `load` aborts
+ * the previous controller and bumps `generation`. A response applies
+ * only when it is still the latest request and the component is still
+ * mounted. An abort is not an error.
  */
-export function useListings() {
+export function useListings(source?: MaybeRefOrGetter<ListingsRequest>) {
   const state = ref<ListingsState>({ kind: 'loading' });
+  const retryNonce = ref(0);
 
   let generation = 0;
   let controller: AbortController | null = null;
   let active = true;
+  let latestQuery = defaultListingQuery;
 
-  const listings = computed(() =>
-    state.value.kind === 'ready' ? state.value.listings : [],
-  );
-  const status = computed(() =>
-    state.value.kind === 'ready' ? 'ready' : state.value.kind,
-  );
+  const listings = computed(() => visiblePage(state.value)?.items ?? []);
+  const status = computed(() => {
+    if (state.value.kind === 'updating') {
+      return 'updating';
+    }
+    if (state.value.kind === 'ready') {
+      return 'ready';
+    }
+    if (state.value.kind === 'error') {
+      return 'error';
+    }
+    return 'loading';
+  });
   const errorMessage = computed(() =>
     state.value.kind === 'error' ? state.value.message : '',
   );
-  const totalCount = computed(() =>
-    state.value.kind === 'ready' ? state.value.totalCount : 0,
+  const totalCount = computed(() => visiblePage(state.value)?.totalCount ?? 0);
+
+  const request = computed(() => {
+    const value =
+      source === undefined
+        ? { query: defaultListingQuery, blocked: false }
+        : toValue(source);
+    return {
+      query: value.query,
+      blocked: value.blocked,
+      nonce: retryNonce.value,
+    };
+  });
+
+  watch(
+    request,
+    (next, previous) => {
+      latestQuery = next.query;
+      if (
+        previous &&
+        next.blocked === previous.blocked &&
+        next.nonce === previous.nonce &&
+        listingQueryEqual(next.query, previous.query)
+      ) {
+        return;
+      }
+      if (next.blocked) {
+        controller?.abort();
+        generation += 1;
+        state.value = { kind: 'blocked' };
+        return;
+      }
+      void load(next.query);
+    },
+    { immediate: true },
   );
 
-  async function load(): Promise<void> {
+  async function load(query: ListingQuery = latestQuery): Promise<void> {
     controller?.abort();
     const requestId = ++generation;
     const next = new AbortController();
     controller = next;
-    state.value = { kind: 'loading' };
+    const previous = visiblePage(state.value);
+    state.value =
+      previous === null
+        ? { kind: 'loading' }
+        : { kind: 'updating', page: previous };
 
     try {
-      const page = await getListings(next.signal);
+      const page = await getListings(query, next.signal);
       if (!active || requestId !== generation) {
         return;
       }
-      state.value = {
-        kind: 'ready',
-        listings: page.items,
-        totalCount: page.totalCount,
-      };
+      state.value = { kind: 'ready', page };
     } catch (error: unknown) {
       if (!active || requestId !== generation || isAbortError(error)) {
         return;
@@ -89,15 +150,11 @@ export function useListings() {
   }
 
   function retry(): void {
-    if (state.value.kind === 'loading') {
+    if (state.value.kind === 'loading' || state.value.kind === 'updating') {
       return;
     }
-    void load();
+    retryNonce.value += 1;
   }
-
-  onMounted(() => {
-    void load();
-  });
 
   onUnmounted(() => {
     active = false;
@@ -105,4 +162,11 @@ export function useListings() {
   });
 
   return { listings, status, errorMessage, totalCount, load, retry };
+}
+
+function visiblePage(state: ListingsState): ListingPage | null {
+  if (state.kind === 'ready' || state.kind === 'updating') {
+    return state.page;
+  }
+  return null;
 }

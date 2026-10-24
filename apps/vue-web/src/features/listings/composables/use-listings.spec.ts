@@ -1,10 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent } from 'vue';
+import { defineComponent, ref, type Ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpError, NetworkError } from '../../../app/api/get-json';
 import type { ListingPage } from '../api/get-listings';
 import { businessListing } from '../fixtures/sample-listings';
-import { useListings } from './use-listings';
+import { defaultListingQuery } from '../models/listing-query';
+import { useListings, type ListingsRequest } from './use-listings';
 
 const getListings = vi.hoisted(() => vi.fn());
 
@@ -31,11 +32,11 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function mountListings() {
+function mountListings(source?: Ref<ListingsRequest>) {
   let api!: ReturnType<typeof useListings>;
   const Host = defineComponent({
     setup() {
-      api = useListings();
+      api = source === undefined ? useListings() : useListings(source);
       return () => null;
     },
   });
@@ -135,7 +136,7 @@ describe('useListings', () => {
     getListings.mockReturnValueOnce(first.promise);
     getListings.mockReturnValueOnce(second.promise);
     const { api, wrapper } = mountListings();
-    const firstSignal = getListings.mock.calls[0]?.[0] as AbortSignal;
+    const firstSignal = getListings.mock.calls[0]?.[1] as AbortSignal;
 
     void api.load();
 
@@ -157,7 +158,7 @@ describe('useListings', () => {
     const pending = deferred<ListingPage>();
     getListings.mockReturnValueOnce(pending.promise);
     const { wrapper } = mountListings();
-    const signal = getListings.mock.calls[0]?.[0] as AbortSignal;
+    const signal = getListings.mock.calls[0]?.[1] as AbortSignal;
 
     wrapper.unmount();
     pending.resolve(page('Too late'));
@@ -165,5 +166,88 @@ describe('useListings', () => {
 
     expect(signal.aborted).toBe(true);
     expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the previous page visible while the next query loads', async () => {
+    const first = deferred<ListingPage>();
+    const second = deferred<ListingPage>();
+    getListings.mockReturnValueOnce(first.promise);
+    getListings.mockReturnValueOnce(second.promise);
+    const source = ref<ListingsRequest>({
+      query: defaultListingQuery,
+      blocked: false,
+    });
+    const { api, wrapper } = mountListings(source);
+
+    first.resolve(page('Harbor & Rye', 8));
+    await flushPromises();
+
+    const firstSignal = getListings.mock.calls[0]?.[1] as AbortSignal;
+    source.value = {
+      query: { ...defaultListingQuery, search: 'bakery', category: 'Retail' },
+      blocked: false,
+    };
+    await flushPromises();
+
+    expect(api.status.value).toBe('updating');
+    expect(api.listings.value[0]?.title).toBe('Harbor & Rye');
+    expect(firstSignal.aborted).toBe(true);
+    expect(getListings.mock.calls[1]?.[0]).toMatchObject({
+      search: 'bakery',
+      category: 'Retail',
+      page: 1,
+    });
+
+    api.retry();
+    expect(getListings).toHaveBeenCalledTimes(2);
+
+    second.resolve(page('Cedar Bakery'));
+    await flushPromises();
+    expect(api.status.value).toBe('ready');
+    expect(api.listings.value[0]?.title).toBe('Cedar Bakery');
+    wrapper.unmount();
+  });
+
+  it('discards the previous page when the update fails', async () => {
+    getListings.mockResolvedValueOnce(page('Harbor & Rye'));
+    const source = ref<ListingsRequest>({
+      query: defaultListingQuery,
+      blocked: false,
+    });
+    const { api, wrapper } = mountListings(source);
+    await flushPromises();
+
+    getListings.mockRejectedValueOnce(new HttpError(503));
+    source.value = {
+      query: { ...defaultListingQuery, search: 'bakery' },
+      blocked: false,
+    };
+    await flushPromises();
+
+    expect(api.status.value).toBe('error');
+    expect(api.listings.value).toEqual([]);
+    expect(api.errorMessage.value).toContain('problem');
+    wrapper.unmount();
+  });
+
+  it('does not request an inverted price range', async () => {
+    getListings.mockResolvedValue(page('Harbor & Rye'));
+    const source = ref<ListingsRequest>({
+      query: defaultListingQuery,
+      blocked: false,
+    });
+    const { api, wrapper } = mountListings(source);
+    await flushPromises();
+
+    source.value = {
+      query: { ...defaultListingQuery, minPrice: 10, maxPrice: 1 },
+      blocked: true,
+    };
+    await flushPromises();
+
+    expect(getListings).toHaveBeenCalledTimes(1);
+    expect(api.listings.value).toEqual([]);
+    expect(api.status.value).toBe('loading');
+    wrapper.unmount();
   });
 });

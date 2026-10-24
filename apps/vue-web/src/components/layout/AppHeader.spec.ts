@@ -63,6 +63,15 @@ describe('AppHeader', () => {
     expect(links[1]?.classes()).toContain('is-active');
   });
 
+  it('keeps Listings current when the listings URL has a filter query', async () => {
+    const { wrapper: header } = await mountHeader('/listings?category=Retail');
+    const links = header.get('#primary-navigation').findAll('a');
+
+    expect(links[0]?.attributes('aria-current')).toBeUndefined();
+    expect(links[1]?.attributes('aria-current')).toBe('page');
+    expect(links[1]?.classes()).toContain('is-active');
+  });
+
   it('does not mark the primary links current on another route', async () => {
     const { wrapper: header } = await mountHeader('/missing-page');
     const links = header.get('#primary-navigation').findAll('a');

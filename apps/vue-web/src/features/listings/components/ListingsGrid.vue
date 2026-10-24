@@ -13,12 +13,12 @@ import type { BusinessListing } from '../models/business-listing';
  * Empty is `ready` with no rows. A separate empty status could disagree
  * with an array that still has items.
  *
- * Angular also has an `updating` state and a clear-filters action. Both
- * belong to search and paging, which this phase does not implement. The
- * retry button is the error state's action: it emits, and the parent that
- * puts the grid in `error` is the one that handles the event.
+ * `updating` keeps the previous page visible while a newer query is in
+ * flight. The error state replaces that page. The retry button emits,
+ * and it is rendered only when the parent listens. Clear filters is the
+ * empty state's action, and only when the parent asked for it.
  */
-export type ListingsGridStatus = 'loading' | 'ready' | 'error';
+export type ListingsGridStatus = 'loading' | 'updating' | 'ready' | 'error';
 
 const props = withDefaults(
   defineProps<{
@@ -26,17 +26,20 @@ const props = withDefaults(
     status?: ListingsGridStatus;
     errorMessage?: string;
     emptyMessage?: string;
+    showClear?: boolean;
   }>(),
   {
     listings: () => [],
     status: 'ready',
     errorMessage: 'Sample listings could not be loaded.',
     emptyMessage: 'No businesses are listed yet.',
+    showClear: false,
   },
 );
 
 const emit = defineEmits<{
   retry: [];
+  clear: [];
 }>();
 
 /**
@@ -48,6 +51,10 @@ const skeletonSlots = [1, 2, 3, 4, 5, 6] as const;
 
 function onRetry(): void {
   emit('retry');
+}
+
+function onClear(): void {
+  emit('clear');
 }
 
 /**
@@ -97,8 +104,20 @@ function retryListenerAttached(): boolean {
     </button>
   </div>
 
+  <div v-else-if="props.status === 'updating'">
+    <p class="updating" role="status">Updating listings.</p>
+    <ul class="grid is-updating" aria-busy="true">
+      <li v-for="listing in props.listings" :key="listing.id">
+        <ListingCard :listing="listing" />
+      </li>
+    </ul>
+  </div>
+
   <div v-else-if="props.listings.length === 0" class="state">
     <p>{{ props.emptyMessage }}</p>
+    <button v-if="props.showClear" type="button" @click="onClear">
+      Clear filters
+    </button>
   </div>
 
   <!--
@@ -226,6 +245,16 @@ li {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.is-updating {
+  opacity: 0.55;
+}
+
+.updating {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-weight: 700;
 }
 
 .visually-hidden {

@@ -20,7 +20,7 @@ describe('listingsErrorMessage', () => {
       'The listings service had a problem. Try again in a moment.',
     );
     expect(listingsErrorMessage(new HttpError(400))).toBe(
-      'Listings could not be loaded.',
+      'Those filters were rejected. Adjust them and try again.',
     );
     expect(listingsErrorLog(new HttpError(503))).toBe(
       'Listing request failed (503).',

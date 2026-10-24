@@ -11,6 +11,9 @@ export function listingsErrorMessage(error: unknown): string {
     return 'Listings could not be loaded. Check your connection and try again.';
   }
   if (error instanceof HttpError) {
+    if (error.status === 400) {
+      return 'Those filters were rejected. Adjust them and try again.';
+    }
     if (error.status === 404) {
       return 'The listings service could not be found.';
     }
