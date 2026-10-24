@@ -4,6 +4,7 @@ import {
   ref,
   toValue,
   watch,
+  type ComputedRef,
   type MaybeRefOrGetter,
 } from 'vue';
 import { isAbortError } from '../../../app/api/get-json';
@@ -12,6 +13,7 @@ import {
   listingsErrorLog,
   listingsErrorMessage,
 } from '../api/listings-error-message';
+import type { BusinessListing } from '../models/business-listing';
 import {
   defaultListingQuery,
   listingQueryEqual,
@@ -47,6 +49,28 @@ export interface ListingsRequest {
 }
 
 /**
+ * What the grid is allowed to draw. `blocked` is not one of these.
+ * An inverted price is a form problem the view already shows, and the
+ * composable reports `loading` because the next valid query has no
+ * page left to keep.
+ */
+export type ListingsStatus = 'loading' | 'updating' | 'ready' | 'error';
+
+/**
+ * Public surface. Every data field is a computed, which Vue will not
+ * let the caller assign. The state ref stays in this function.
+ * `retry` is the only command. A public load would let a caller fetch
+ * a query the address bar does not show.
+ */
+export interface ListingsSnapshot {
+  readonly listings: ComputedRef<readonly BusinessListing[]>;
+  readonly status: ComputedRef<ListingsStatus>;
+  readonly errorMessage: ComputedRef<string>;
+  readonly totalCount: ComputedRef<number>;
+  retry(): void;
+}
+
+/**
  * Request lifecycle for the listings page.
  *
  * `source` is the committed query, usually a computed of the URL.
@@ -57,8 +81,15 @@ export interface ListingsRequest {
  * the previous controller and bumps `generation`. A response applies
  * only when it is still the latest request and the component is still
  * mounted. An abort is not an error.
+ *
+ * `onUnmounted` covers the race `AbortController` does not: the body
+ * can already have resolved, with the assignment still queued. The
+ * `active` flag drops that assignment. The watch itself stops with the
+ * component, which is Vue's cleanup for a watch created in setup.
  */
-export function useListings(source?: MaybeRefOrGetter<ListingsRequest>) {
+export function useListings(
+  source?: MaybeRefOrGetter<ListingsRequest>,
+): ListingsSnapshot {
   const state = ref<ListingsState>({ kind: 'loading' });
   const retryNonce = ref(0);
 
@@ -68,7 +99,7 @@ export function useListings(source?: MaybeRefOrGetter<ListingsRequest>) {
   let latestQuery = defaultListingQuery;
 
   const listings = computed(() => visiblePage(state.value)?.items ?? []);
-  const status = computed(() => {
+  const status = computed((): ListingsStatus => {
     if (state.value.kind === 'updating') {
       return 'updating';
     }
@@ -161,7 +192,7 @@ export function useListings(source?: MaybeRefOrGetter<ListingsRequest>) {
     controller?.abort();
   });
 
-  return { listings, status, errorMessage, totalCount, load, retry };
+  return { listings, status, errorMessage, totalCount, retry };
 }
 
 function visiblePage(state: ListingsState): ListingPage | null {

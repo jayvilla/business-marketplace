@@ -140,6 +140,19 @@ describe('ListingFilters', () => {
     });
   });
 
+  it('does not emit a search that was still waiting when the form unmounts', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const wrapper = mount(ListingFilters, {
+      props: { query: defaultListingQuery },
+    });
+
+    await wrapper.get('#listing-search').setValue('bakery');
+    wrapper.unmount();
+    await vi.advanceTimersByTimeAsync(LISTING_TEXT_DEBOUNCE_MS);
+
+    expect(wrapper.emitted('change')).toBeUndefined();
+  });
+
   it('leaves clear disabled when only the sort is set', () => {
     const wrapper = mount(ListingFilters, {
       props: { query: { ...defaultListingQuery, sort: 'price-asc' } },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import {
   filtersEqual,
   LISTING_CATEGORIES,
@@ -41,7 +41,19 @@ const minPrice = ref('');
 const maxPrice = ref('');
 const sort = ref<ListingSort>('newest');
 const fieldError = ref<FilterFieldError | null>(null);
-const filtersActive = ref(false);
+
+/**
+ * Derived from the draft, not stored beside it. A ref updated from every
+ * keystroke can miss one call site and leave Clear filters disabled
+ * after the field already has text.
+ */
+const filtersActive = computed(
+  () =>
+    search.value.trim() !== '' ||
+    category.value !== '' ||
+    minPrice.value.trim() !== '' ||
+    maxPrice.value.trim() !== '',
+);
 
 let textTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -50,7 +62,6 @@ watch(
   (query) => {
     const current = readFilters();
     if (current !== null && filtersEqual(current, query)) {
-      refreshFiltersActive();
       return;
     }
     clearTextTimer();
@@ -60,7 +71,6 @@ watch(
     maxPrice.value = query.maxPrice === null ? '' : String(query.maxPrice);
     sort.value = query.sort;
     fieldError.value = null;
-    refreshFiltersActive();
   },
   { immediate: true },
 );
@@ -71,19 +81,16 @@ onUnmounted(() => {
 
 function onSearchInput(event: Event): void {
   search.value = inputValue(event);
-  refreshFiltersActive();
   scheduleText();
 }
 
 function onMinPriceInput(event: Event): void {
   minPrice.value = inputValue(event);
-  refreshFiltersActive();
   scheduleText();
 }
 
 function onMaxPriceInput(event: Event): void {
   maxPrice.value = inputValue(event);
-  refreshFiltersActive();
   scheduleText();
 }
 
@@ -111,7 +118,6 @@ function clear(): void {
   minPrice.value = '';
   maxPrice.value = '';
   fieldError.value = null;
-  refreshFiltersActive();
   publish();
 }
 
@@ -141,7 +147,6 @@ function clearTextTimer(): void {
 }
 
 function publish(): void {
-  refreshFiltersActive();
   const filters = readFilters();
   if (filters === null) {
     return;
@@ -184,14 +189,6 @@ function readFilters(): ListingFilters | null {
     maxPrice: parsedMax,
     sort: sort.value,
   };
-}
-
-function refreshFiltersActive(): void {
-  filtersActive.value =
-    search.value.trim() !== '' ||
-    category.value !== '' ||
-    minPrice.value.trim() !== '' ||
-    maxPrice.value.trim() !== '';
 }
 
 function inputValue(event: Event): string {

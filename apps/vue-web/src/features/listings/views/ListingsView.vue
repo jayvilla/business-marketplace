@@ -26,6 +26,8 @@ import {
  *
  * The composable watches the parsed query. It does not watch the raw
  * string, so rewriting `page=1` to nothing does not start a second GET.
+ * This view's canonical rewrite reads that same computed, so the URL
+ * correction and the request cannot parse the address differently.
  */
 const route = useRoute();
 const router = useRouter();
@@ -44,9 +46,8 @@ const { listings, status, errorMessage, totalCount, retry } = useListings(
 const resultsHeading = useTemplateRef<HTMLHeadingElement>('resultsHeading');
 
 watch(
-  () => route.query,
-  () => {
-    const next = parseListingQuery(route.query);
+  parsed,
+  (next) => {
     if (next.priceError !== null) {
       return;
     }

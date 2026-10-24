@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, ref, type Ref } from 'vue';
+import { defineComponent, nextTick, ref, type Ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpError, NetworkError } from '../../../app/api/get-json';
 import type { ListingPage } from '../api/get-listings';
@@ -130,15 +130,23 @@ describe('useListings', () => {
     wrapper.unmount();
   });
 
-  it('drops a stale response after a newer request starts', async () => {
+  it('drops a stale response after a newer query starts', async () => {
     const first = deferred<ListingPage>();
     const second = deferred<ListingPage>();
     getListings.mockReturnValueOnce(first.promise);
     getListings.mockReturnValueOnce(second.promise);
-    const { api, wrapper } = mountListings();
+    const source = ref<ListingsRequest>({
+      query: defaultListingQuery,
+      blocked: false,
+    });
+    const { api, wrapper } = mountListings(source);
     const firstSignal = getListings.mock.calls[0]?.[1] as AbortSignal;
 
-    void api.load();
+    source.value = {
+      query: { ...defaultListingQuery, search: 'fresh' },
+      blocked: false,
+    };
+    await nextTick();
 
     expect(firstSignal.aborted).toBe(true);
     expect(getListings).toHaveBeenCalledTimes(2);
